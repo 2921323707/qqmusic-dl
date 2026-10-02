@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>qqmusic-dl</title>
+  <link rel="icon" type="image/png" href="/music_icon.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- ============ 左侧导航 ============ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"><img src="/music_icon.png" alt=""></span>
+        <span class="brand-text">qqmusic-dl</span>
+      </div>
+      <nav class="nav" id="nav" aria-label="主导航">
+        <button class="nav-item is-active" type="button" data-tab="search">搜索</button>
+        <button class="nav-item" type="button" data-tab="tasks">
+          任务
+          <span class="nav-badge" id="nav-task-badge" hidden></span>
+        </button>
+        <button class="nav-item" type="button" data-tab="library">媒体库</button>
+        <button class="nav-item" type="button" data-tab="playlist">歌单</button>
+        <button class="nav-item" type="button" data-tab="settings">设置</button>
+      </nav>
+      <div class="sidebar-foot">qqmusic-dl v0.1 · <a class="side-link" href="/intro" target="_blank">产品动画</a></div>
+    </aside>
+
+    <!-- ============ 右侧主区域 ============ -->
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-service">qqmusic-dl</span>
+          <span class="topbar-sep">/</span>
+          <span class="topbar-page" id="topbar-page">搜索</span>
+        </div>
+        <!-- 登录状态区由 app.js 渲染 -->
+        <div class="topbar-right" id="auth-area"></div>
+      </header>
+
+      <main class="content">
+        <!-- ============ 搜索页 ============ -->
+        <section class="page" id="page-search" aria-label="搜索">
+          <div class="card searchbar">
+            <input id="search-input" type="search" placeholder="搜索歌曲 / 歌手 / 专辑，回车或点击搜索" autocomplete="off" aria-label="搜索关键词">
+            <button class="btn btn-primary" id="search-btn" type="button">搜索</button>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h2 class="card-title">搜索结果</h2>
+              <div class="pager" id="search-pager" hidden>
+                <button class="btn btn-ghost btn-sm" id="page-prev" type="button">上一页</button>
+                <span class="pager-info" id="page-info">第 1 页</span>
+                <button class="btn btn-ghost btn-sm" id="page-next" type="button">下一页</button>
+              </div>
+            </div>
+            <div class="song-list" id="search-results"></div>
+            <div class="skeleton-list" id="search-loading" hidden>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+            </div>
+            <div class="empty" id="search-empty">
+              <p id="search-empty-text">输入关键词，搜索你想下载的歌曲</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 任务页 ============ -->
+        <section class="page" id="page-tasks" hidden aria-label="任务">
+          <div class="card">
+            <div class="card-head">
+              <h2 class="card-title">下载任务</h2>
+              <div class="library-head-actions">
+                <button class="btn btn-ghost btn-sm" id="open-download-dir-btn" type="button" title="在资源管理器中打开下载目录">打开目录</button>
+                <button class="btn btn-ghost btn-sm" id="tasks-clear" type="button" title="移除已完成的任务记录（下载中的任务不受影响）">清空</button>
+                <button class="btn btn-ghost btn-sm" id="tasks-refresh" type="button">刷新</button>
+              </div>
+            </div>
+            <div class="task-list" id="task-list"></div>
+            <div class="skeleton-list" id="tasks-loading" hidden>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+            </div>
+            <div class="empty" id="tasks-empty" hidden>
+              <p>还没有任务，去搜索页添加下载吧</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 媒体库页 ============ -->
+        <section class="page" id="page-library" hidden aria-label="媒体库">
+          <div class="card">
+            <div class="card-head">
+              <h2 class="card-title">媒体库 <span class="lib-count" id="library-count"></span></h2>
+              <div class="library-head-actions">
+                <button class="btn btn-ghost btn-sm" id="library-cleanup-btn" type="button" hidden>清理失效记录</button>
+                <input class="filter-input" id="library-filter" type="search" placeholder="按歌曲 / 歌手 / 专辑过滤…" aria-label="媒体库过滤">
+              </div>
+            </div>
+            <div class="lib-list" id="library-list"></div>
+            <div class="skeleton-list" id="library-loading" hidden>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+            </div>
+            <div class="empty" id="library-empty" hidden>
+              <p id="library-empty-text">媒体库还是空的</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 歌单页 ============ -->
+        <section class="page" id="page-playlist" hidden aria-label="歌单">
+          <div class="card searchbar">
+            <input id="playlist-input" type="search" placeholder="粘贴 QQ 音乐歌单链接或 ID，如 y.qq.com/n/ryqq_v2/playlist/8740590963（支持他人公开歌单）" autocomplete="off" aria-label="歌单链接或 ID">
+            <button class="btn btn-primary" id="playlist-resolve-btn" type="button">解析歌单</button>
+          </div>
+          <div class="card" id="playlist-card" hidden>
+            <div class="card-head">
+              <div class="playlist-head">
+                <div class="playlist-cover" id="playlist-cover"></div>
+                <div>
+                  <h2 class="card-title" id="playlist-title"></h2>
+                  <p class="playlist-meta" id="playlist-meta"></p>
+                </div>
+              </div>
+            </div>
+            <div class="playlist-toolbar">
+              <label class="playlist-select-all" for="playlist-select-all">
+                <input type="checkbox" id="playlist-select-all" checked>
+                <span>全选</span>
+              </label>
+              <select class="song-quality" id="playlist-quality" aria-label="下载音质"></select>
+              <span class="playlist-count" id="playlist-count"></span>
+              <button class="btn btn-primary btn-sm" id="playlist-download-btn" type="button">下载所选</button>
+            </div>
+            <div class="song-list" id="playlist-songs"></div>
+          </div>
+          <div class="card">
+            <div class="skeleton-list" id="playlist-loading" hidden>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+              <div class="skeleton-row"></div>
+            </div>
+            <div class="empty" id="playlist-empty">
+              <p id="playlist-empty-text">粘贴歌单链接解析后，可勾选歌曲批量下载（支持他人公开歌单）</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 设置页 ============ -->
+        <section class="page" id="page-settings" hidden aria-label="设置">
+          <div class="card">
+            <div class="card-head">
+              <h2 class="card-title">设置</h2>
+            </div>
+            <form class="form-grid" id="settings-form" novalidate>
+              <div class="field">
+                <label class="field-label" for="cfg-naming">命名模板</label>
+                <input id="cfg-naming" type="text" placeholder="{artist} - {title} [{quality}]" autocomplete="off">
+                <p class="field-hint">支持占位符 <code>{artist}</code> <code>{title}</code> <code>{album}</code> <code>{quality}</code> <code>{year}</code>；使用 <code>/</code> 可创建子目录，例如 <code>{artist}/{album}/{title}</code></p>
+              </div>
+              <div class="field">
+                <label class="field-label" for="cfg-dir">下载目录</label>
+                <input id="cfg-dir" type="text" autocomplete="off">
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label class="field-label" for="cfg-concurrency">并发数（1-8）</label>
+                  <input id="cfg-concurrency" type="number" min="1" max="8" step="1">
+                </div>
+                <div class="field">
+                  <label class="field-label" for="cfg-quality">默认音质</label>
+                  <select id="cfg-quality"></select>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label" for="cfg-retries">最大重试次数（0-10）</label>
+                <input id="cfg-retries" type="number" min="0" max="10" step="1">
+              </div>
+              <label class="field checkbox-field" for="cfg-fallback">
+                <input id="cfg-fallback" type="checkbox">
+                <span class="field-label">失败自动降级音质（目标音质无权限时沿音质阶梯降级）</span>
+              </label>
+              <p class="form-error" id="settings-error" hidden role="alert"></p>
+              <div>
+                <button class="btn btn-primary" type="submit">保存设置</button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ============ 扫码登录模态框 ============ -->
+  <div class="modal" id="qr-modal" hidden>
+    <div class="modal-mask" id="qr-mask"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+      <div class="modal-head">
+        <h3 id="qr-title">扫码登录</h3>
+        <button class="modal-close" id="qr-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <img class="qr-image" id="qr-image" alt="QQ 音乐登录二维码">
+        <p class="qr-hint" id="qr-hint">正在获取二维码…</p>
+        <p class="qr-sub">使用 QQ 音乐 App 扫描二维码完成登录</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 登录引导模态框（VIP 音质需要登录时） ============ -->
+  <div class="modal" id="login-guide-modal" hidden>
+    <div class="modal-mask" id="guide-mask"></div>
+    <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+      <div class="modal-head">
+        <h3 id="guide-title">需要登录</h3>
+        <button class="modal-close" id="guide-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="guide-message" id="guide-message">该音质需要 QQ 音乐登录凭证。</p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="guide-cancel" type="button">取消</button>
+          <button class="btn btn-primary" id="guide-goto" type="button">扫码登录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 底部播放器 ============ -->
+  <div class="player" id="player" hidden>
+    <div class="player-cover" id="player-cover"><span aria-hidden="true">♪</span></div>
+    <div class="player-info">
+      <div class="player-title" id="player-title"></div>
+      <div class="player-sub" id="player-sub"></div>
+    </div>
+    <div class="player-controls">
+      <button class="player-btn" id="player-prev" type="button" aria-label="上一首" title="上一首">⏮</button>
+      <button class="player-btn player-btn-main" id="player-toggle" type="button" aria-label="播放或暂停" title="播放 / 暂停">
+        <span class="icon-play">▶</span><span class="icon-pause" hidden>⏸</span>
+      </button>
+      <button class="player-btn" id="player-next" type="button" aria-label="下一首" title="下一首">⏭</button>
+    </div>
+    <div class="player-progress">
+      <span class="player-time" id="player-current">0:00</span>
+      <input type="range" class="player-seek" id="player-seek" min="0" max="1000" value="0" step="1" aria-label="播放进度">
+      <span class="player-time" id="player-duration">0:00</span>
+    </div>
+    <div class="player-lyrics-actions">
+      <button class="player-btn" id="player-lyrics-btn" type="button" aria-label="页面内歌词" title="页面内歌词">词</button>
+      <button class="player-btn" id="player-desktop-lyrics-btn" type="button" aria-label="桌面歌词" title="桌面歌词（置顶悬浮窗）">桌面</button>
+    </div>
+    <button class="player-btn player-close" id="player-close" type="button" aria-label="关闭播放器" title="关闭">✕</button>
+  </div>
+  <audio id="audio-el" preload="metadata"></audio>
+
+  <!-- ============ 删除确认弹窗 ============ -->
+  <div class="modal" id="delete-modal" hidden>
+    <div class="modal-mask" id="delete-mask"></div>
+    <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+      <div class="modal-head">
+        <h3 id="delete-title">删除</h3>
+        <button class="modal-close" id="delete-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body" style="align-items:stretch;text-align:left">
+        <p class="guide-message" id="delete-message"></p>
+        <label class="checkbox-field" for="delete-remove-file">
+          <input type="checkbox" id="delete-remove-file" checked>
+          <span class="field-label">同时删除磁盘文件（含 .lrc 与空歌曲文件夹）</span>
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="delete-cancel" type="button">取消</button>
+          <button class="btn btn-danger" id="delete-confirm" type="button">删除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 页面内歌词面板 ============ -->
+  <div class="lyrics-panel" id="lyrics-panel" hidden>
+    <div class="lyrics-panel-mask" id="lyrics-mask"></div>
+    <div class="lyrics-panel-card" role="dialog" aria-modal="true" aria-label="歌词">
+      <div class="lyrics-panel-head">
+        <div class="lyrics-cover" id="lyrics-cover"><span aria-hidden="true">♪</span></div>
+        <div class="lyrics-head-info">
+          <div class="lyrics-title" id="lyrics-title"></div>
+          <div class="lyrics-sub" id="lyrics-sub"></div>
+        </div>
+        <button class="modal-close" id="lyrics-close" type="button" aria-label="关闭歌词">×</button>
+      </div>
+      <div class="lyrics-scroll" id="lyrics-scroll"></div>
+      <p class="lyrics-tip">点击任意一行可跳转播放 · 「桌面」按钮可开启置顶悬浮歌词窗</p>
+    </div>
+  </div>
+
+  <!-- ============ Toast 容器 ============ -->
+  <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
+
+  <noscript><p style="padding:16px;color:#e8eaf1">当前浏览器已禁用 JavaScript，页面无法工作。</p></noscript>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

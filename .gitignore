@@ -1,0 +1,18 @@
+# 依赖（由 package-lock.json 记录，npm install 还原）
+node_modules/
+
+# 运行时数据：登录凭证、SQLite 库、密钥 —— 绝不入库
+data/
+# 下载的音乐文件（体积大且属个人资产）
+downloads/
+
+# 日志与下载残片
+*.log
+*.part
+
+# 编辑器/系统噪音
+.DS_Store
+Thumbs.db
+
+# 例外：vendor/QQMusicapi/src/public 是上游协议实现的一部分（登录页 HTML），
+# 上面的 `public` 规则若存在会连它一起忽略，这里显式取回。

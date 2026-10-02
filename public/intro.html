@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qqmusic-dl · 产品动画</title>
+<link rel="icon" type="image/png" href="/music_icon.png">
+<link rel="stylesheet" href="/intro.css">
+</head>
+<body>
+<div class="stage" id="stage">
+  <!-- 背景氛围 -->
+  <div class="bg-orb bg-orb-a"></div>
+  <div class="bg-orb bg-orb-b"></div>
+
+  <!-- ============ Hero ============ -->
+  <header class="hero">
+    <div class="logo-wrap">
+      <div class="logo-ring"></div>
+      <img class="logo" src="/music_icon.png" alt="qqmusic-dl">
+    </div>
+    <h1 class="title" aria-label="qqmusic-dl"></h1>
+    <p class="tagline"><span id="tagline-text"></span><span class="caret"></span></p>
+    <div class="chips">
+      <span class="chip">Node.js</span>
+      <span class="chip">零构建</span>
+      <span class="chip">本地运行</span>
+      <span class="chip">Web UI + API</span>
+    </div>
+  </header>
+
+  <!-- ============ 模拟演示 ============ -->
+  <section class="demo">
+    <div class="browser">
+      <div class="browser-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="browser-url">127.0.0.1:7800</span>
+      </div>
+      <div class="browser-body">
+        <!-- 搜索框 -->
+        <div class="mock-search">
+          <span class="mock-search-text" id="mock-query"></span><span class="mock-caret" id="mock-caret"></span>
+          <span class="mock-search-btn">搜索</span>
+        </div>
+        <!-- 结果行 -->
+        <div class="mock-rows">
+          <div class="mock-row">
+            <span class="mock-cover c1"></span>
+            <span class="mock-lines"><b>稻香</b><i>周杰伦 · 魔杰座</i></span>
+            <span class="mock-q">SQ 无损</span>
+          </div>
+          <div class="mock-row">
+            <span class="mock-cover c2"></span>
+            <span class="mock-lines"><b>晴天</b><i>周杰伦 · 叶惠美</i></span>
+            <span class="mock-q">SQ 无损</span>
+          </div>
+          <div class="mock-row">
+            <span class="mock-cover c3"></span>
+            <span class="mock-lines"><b>兰花草</b><i>宋亚轩 · Live</i></span>
+            <span class="mock-q">MP3 128</span>
+          </div>
+        </div>
+        <!-- 下载按钮 + 进度 -->
+        <div class="mock-actions">
+          <span class="mock-dl-btn" id="mock-dl-btn">下载</span>
+          <span class="mock-progress"><span class="mock-progress-fill" id="mock-fill"></span></span>
+          <span class="mock-pct" id="mock-pct">0%</span>
+          <span class="mock-done" id="mock-done">✓ 已完成</span>
+        </div>
+        <!-- 迷你播放条 -->
+        <div class="mock-player" id="mock-player">
+          <span class="mock-eq"><i></i><i></i><i></i></span>
+          <span class="mock-player-title">周杰伦 - 稻香 [SQ]</span>
+          <span class="mock-player-time">04:19</span>
+        </div>
+      </div>
+    </div>
+    <!-- 漂浮音符 -->
+    <span class="note note-1">♪</span>
+    <span class="note note-2">♫</span>
+    <span class="note note-3">♪</span>
+  </section>
+
+  <!-- ============ 特性 ============ -->
+  <section class="features">
+    <div class="feat">17 档音质</div>
+    <div class="feat">AUTO 最高可用</div>
+    <div class="feat">歌单批量下载</div>
+    <div class="feat">他人公开歌单</div>
+    <div class="feat">桌面歌词</div>
+    <div class="feat">一歌一文件夹</div>
+    <div class="feat">内置播放器</div>
+    <div class="feat">封面 · 歌词 · 标签</div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <footer class="cta">
+    <a class="btn-main" href="/">进入应用 →</a>
+    <button class="btn-replay" id="replay" type="button">↻ 重播动画</button>
+  </footer>
+</div>
+<script src="/intro.js"></script>
+</body>
+</html>

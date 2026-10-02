@@ -1,0 +1,365 @@
+/* ============================================================
+   qqmusic-dl 产品动画页 /intro（自包含，不影响主应用样式）
+   时间线：logo(0s) → 标题逐字(0.5s) → 标语打字(1.4s) → 特性条(2s)
+   → 演示窗(2.6s) → 搜索打字(3.4s) → 结果行(4.6s) → 下载(6.6s)
+   → 进度(7.2s) → 完成(9.4s) → 播放条(9.8s) → 特性网格(10.8s) → CTA(12.2s)
+   ============================================================ */
+
+:root {
+  --paper: #f5f4ee;
+  --surface: #fffef9;
+  --ink: #2e332e;
+  --ink-soft: #6b7168;
+  --ink-faint: #a3ab9c;
+  --line: #e5e3db;
+  --sage: #6e8f72;
+  --sage-deep: #55705a;
+  --sage-soft: #edf1eb;
+  --font-body: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* 背景氛围光斑 */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  z-index: 0;
+  pointer-events: none;
+}
+.bg-orb-a {
+  width: 520px; height: 520px;
+  top: -180px; right: -120px;
+  background: rgba(110, 143, 114, 0.16);
+  animation: orb-drift 14s ease-in-out infinite alternate;
+}
+.bg-orb-b {
+  width: 420px; height: 420px;
+  bottom: -160px; left: -100px;
+  background: rgba(207, 160, 94, 0.12);
+  animation: orb-drift 18s ease-in-out infinite alternate-reverse;
+}
+@keyframes orb-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(40px, 30px) scale(1.08); }
+}
+
+.stage {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 56px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+}
+
+/* ============ Hero ============ */
+.hero { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+
+.logo-wrap { position: relative; width: 96px; height: 96px; }
+.logo {
+  position: relative;
+  width: 96px; height: 96px;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(85, 112, 90, 0.35);
+  opacity: 0;
+  transform: scale(0.5);
+}
+.logo-ring {
+  position: absolute;
+  inset: -14px;
+  border: 2px solid var(--sage);
+  border-radius: 34px;
+  opacity: 0;
+}
+.playing .logo { animation: logo-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+.playing .logo-ring { animation: ring-out 1.6s cubic-bezier(0.22, 0.9, 0.36, 1) 0.5s both; }
+@keyframes logo-in { to { opacity: 1; transform: scale(1); } }
+@keyframes ring-out {
+  0%   { opacity: 0.9; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+.title { font-size: 40px; font-weight: 700; letter-spacing: 0.01em; display: flex; }
+.title span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(26px);
+}
+.playing .title span { animation: char-in 0.55s cubic-bezier(0.22, 0.9, 0.36, 1) both; animation-delay: calc(0.5s + var(--i) * 0.07s); }
+@keyframes char-in { to { opacity: 1; transform: none; } }
+
+.tagline { font-size: 16px; color: var(--ink-soft); min-height: 1.7em; }
+.caret {
+  display: inline-block;
+  width: 2px; height: 1em;
+  background: var(--sage);
+  margin-left: 2px;
+  vertical-align: -2px;
+  animation: blink 0.9s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.chip {
+  padding: 4px 13px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  opacity: 0;
+  transform: translateY(12px);
+}
+.playing .chip { animation: rise-in 0.5s cubic-bezier(0.22, 0.9, 0.36, 1) both; animation-delay: calc(2s + var(--i) * 0.1s); }
+@keyframes rise-in { to { opacity: 1; transform: none; } }
+
+/* ============ 演示浏览器 ============ */
+.demo { position: relative; width: 100%; max-width: 560px; }
+
+.browser {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 60px rgba(46, 51, 46, 0.12);
+  opacity: 0;
+  transform: translateY(36px);
+}
+.playing .browser { animation: rise-in 0.7s cubic-bezier(0.22, 0.9, 0.36, 1) 2.6s both; }
+
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: #faf9f4;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.r { background: #e5a3a3; } .dot.y { background: #e5cba3; } .dot.g { background: #a8d0ac; }
+.browser-url {
+  margin-left: 10px;
+  padding: 3px 14px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.browser-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+/* 搜索框 */
+.mock-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+}
+.mock-search-text { flex: 1; font-size: 14px; color: var(--ink); min-height: 1.4em; }
+.mock-caret { width: 2px; height: 1em; background: var(--sage); animation: blink 0.9s steps(1) infinite; }
+.mock-search-btn {
+  padding: 5px 16px;
+  border-radius: 6px;
+  background: var(--sage);
+  color: #fff;
+  font-size: 12.5px;
+}
+
+/* 结果行 */
+.mock-rows { display: flex; flex-direction: column; gap: 6px; }
+.mock-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateX(-14px);
+}
+.playing .mock-row { animation: row-in 0.5s cubic-bezier(0.22, 0.9, 0.36, 1) both; animation-delay: calc(4.6s + var(--i) * 0.18s); }
+@keyframes row-in { to { opacity: 1; transform: none; } }
+.mock-row:nth-child(1) { background: var(--sage-soft); border-color: #d8e2d6; }
+.mock-cover { width: 34px; height: 34px; border-radius: 7px; flex: none; }
+.mock-cover.c1 { background: linear-gradient(135deg, #a8c4ab, #6e8f72); }
+.mock-cover.c2 { background: linear-gradient(135deg, #c9b491, #a5773a); }
+.mock-cover.c3 { background: linear-gradient(135deg, #a3bcc9, #5d8395); }
+.mock-lines { flex: 1; display: flex; flex-direction: column; }
+.mock-lines b { font-size: 13.5px; }
+.mock-lines i { font-style: normal; font-size: 11.5px; color: var(--ink-faint); }
+.mock-q { font-size: 11.5px; color: var(--sage-deep); }
+
+/* 下载动作区 */
+.mock-actions { display: flex; align-items: center; gap: 12px; min-height: 34px; }
+.mock-dl-btn {
+  padding: 6px 20px;
+  border-radius: 6px;
+  background: var(--sage);
+  color: #fff;
+  font-size: 13px;
+  opacity: 0;
+}
+.playing .mock-dl-btn { animation: rise-in 0.4s ease 6.2s both, btn-pulse 0.7s ease 6.6s 2; }
+@keyframes btn-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(110, 143, 114, 0.4); }
+  50%      { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(110, 143, 114, 0); }
+}
+.mock-progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: #eef0e6;
+  overflow: hidden;
+  opacity: 0;
+}
+.playing .mock-progress { animation: rise-in 0.3s ease 7.1s both; }
+.mock-progress-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 99px;
+  background: var(--sage);
+}
+.playing .mock-progress-fill { animation: fill 2s cubic-bezier(0.3, 0.7, 0.4, 1) 7.3s both; }
+@keyframes fill { to { width: 100%; } }
+.mock-pct { font-size: 12px; color: var(--ink-soft); font-family: ui-monospace, Consolas, monospace; min-width: 36px; opacity: 0; }
+.playing .mock-pct { animation: rise-in 0.3s ease 7.1s both; }
+.mock-done {
+  padding: 3px 12px;
+  border-radius: 99px;
+  background: var(--sage-soft);
+  border: 1px solid #d8e2d6;
+  color: var(--sage-deep);
+  font-size: 12.5px;
+  font-weight: 600;
+  opacity: 0;
+  transform: scale(0.6);
+}
+.playing .mock-done { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 9.4s both; }
+@keyframes pop-in { to { opacity: 1; transform: scale(1); } }
+
+/* 迷你播放条 */
+.mock-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  background: #fbfaf6;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.playing .mock-player { animation: rise-in 0.5s cubic-bezier(0.22, 0.9, 0.36, 1) 9.9s both; }
+.mock-eq { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+.mock-eq i {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--sage);
+  animation: eq 0.9s ease-in-out infinite;
+}
+.mock-eq i:nth-child(1) { height: 40%; animation-delay: 0s; }
+.mock-eq i:nth-child(2) { height: 90%; animation-delay: 0.2s; }
+.mock-eq i:nth-child(3) { height: 60%; animation-delay: 0.4s; }
+@keyframes eq { 50% { transform: scaleY(0.35); } }
+.mock-player-title { flex: 1; font-size: 12.5px; color: var(--ink-soft); }
+.mock-player-time { font-size: 11.5px; color: var(--ink-faint); font-family: ui-monospace, Consolas, monospace; }
+
+/* 漂浮音符 */
+.note {
+  position: absolute;
+  color: var(--sage);
+  opacity: 0;
+  font-size: 22px;
+  pointer-events: none;
+}
+.note-1 { right: 8%;  top: 30%; }
+.note-2 { left: 4%;  top: 55%; font-size: 16px; }
+.note-3 { right: 20%; top: 8%;  font-size: 14px; }
+.playing .note { animation: note-float 3.2s ease-out infinite; }
+.playing .note-2 { animation-delay: 1.1s; }
+.playing .note-3 { animation-delay: 2.2s; }
+@keyframes note-float {
+  0%   { opacity: 0; transform: translateY(10px) rotate(-8deg); }
+  25%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translateY(-70px) rotate(10deg); }
+}
+
+/* ============ 特性网格 ============ */
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 640px;
+}
+.feat {
+  padding: 13px 8px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink-soft);
+  opacity: 0;
+  transform: translateY(14px);
+}
+.playing .feat { animation: rise-in 0.5s cubic-bezier(0.22, 0.9, 0.36, 1) both; animation-delay: calc(10.8s + var(--i) * 0.08s); }
+
+/* ============ CTA ============ */
+.cta { display: flex; align-items: center; gap: 14px; opacity: 0; transform: translateY(14px); }
+.playing .cta { animation: rise-in 0.6s cubic-bezier(0.22, 0.9, 0.36, 1) 12.2s both; }
+
+.btn-main {
+  padding: 11px 30px;
+  border-radius: 8px;
+  background: var(--sage);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.btn-main:hover { background: var(--sage-deep); transform: translateY(-2px); }
+
+.btn-replay {
+  padding: 10px 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.btn-replay:hover { border-color: var(--sage); color: var(--sage-deep); }
+
+/* ============ 响应式 ============ */
+@media (max-width: 640px) {
+  .stage { padding: 36px 16px 32px; gap: 28px; }
+  .title { font-size: 30px; }
+  .features { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 减少动态效果：直接呈现终态 */
+@media (prefers-reduced-motion: reduce) {
+  .playing * { animation-duration: 0.01ms !important; animation-delay: 0s !important; }
+  .bg-orb, .note { display: none; }
+}
