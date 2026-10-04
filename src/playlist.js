@@ -54,6 +54,24 @@ function parseMaybeJsonp(text) {
 }
 
 /**
+ * 封面地址规范化：QQ 图片域名均支持 https，统一升级。
+ * 歌单接口返回的 logo 常为 http://，原生壳的 WKWebView 受 ATS 限制
+ * 会拦截外部 http 资源，导致封面显示为破图。
+ */
+function normalizeCover(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'http:' && /(^|\.)(qq\.com|gtimg\.cn)$/i.test(u.hostname)) {
+      u.protocol = 'https:';
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
  * 拉取歌单详情与歌曲列表。
  * @param {string} input 歌单链接或 tid
  * @param {(item: object) => object} parseItem 歌曲解析器（由 qq.js 注入，避免循环依赖）
@@ -94,7 +112,7 @@ export async function resolvePlaylist(input, parseItem) {
   return {
     id: String(tid),
     title: cd.dissname || `歌单 ${tid}`,
-    cover: cd.logo || null,
+    cover: normalizeCover(cd.logo),
     creator: cd.nickname || null,
     trackCount: Number(cd.songnum) || songs.length,
     songs,
