@@ -554,7 +554,7 @@ const FINISHED_STATUSES = ['success', 'failed', 'canceled'];
 function renderTasks(tasks) {
   const box = $('#task-list');
   const alive = new Set();
-  const fresh = [];
+  let hasFresh = false;
   for (const t of tasks) {
     alive.add(t.id);
     const entry = taskRows.get(t.id);
@@ -564,22 +564,22 @@ function renderTasks(tasks) {
     } else {
       const created = createTaskRow(t);
       taskRows.set(t.id, created);
-      fresh.push(created.row);
+      // 新行先入 DOM，使 currentOrder 能感知到它的存在并触发下方重排
+      box.appendChild(created.row);
+      hasFresh = true;
     }
   }
   // 排序与接口一致：进行中/等待中置顶，其次已结束；组内新的在前。
   // 只有顺序真正变化才搬动 DOM，避免轮询期间打断进度条 CSS 过渡。
   const sorted = [...tasks].sort((a, b) => taskSortKey(a) - taskSortKey(b));
-  // 新任务插入：倒序 prepend 使最终 DOM 顺序与接口一致
-  for (let i = fresh.length - 1; i >= 0; i--) {
-    box.prepend(fresh[i]);
-  }
   const currentOrder = [...box.children].map((el) => el.dataset.taskId);
   const desiredOrder = sorted.map((t) => t.id);
   const orderChanged =
+    hasFresh ||
     currentOrder.length !== desiredOrder.length ||
     desiredOrder.some((id, i) => currentOrder[i] !== id);
   if (orderChanged) {
+    // 单次 appendChild 重排：既有行移动不会打断进度条 CSS 过渡
     for (const t of sorted) {
       const entry = taskRows.get(t.id);
       if (entry) box.appendChild(entry.row);
@@ -595,9 +595,11 @@ function renderTasks(tasks) {
   $('#tasks-empty').hidden = tasks.length > 0;
 }
 
-/** 排序权重：进行中/等待中(0) 置顶，已结束(1) 靠后；同档内保持接口给的创建时间倒序（stable sort） */
+/** 排序权重：下载中(0) > 等待/处理中(1) > 已结束(2)，与后端 listTasks 保持一致。
+ *  同档内保持接口给的创建时间倒序（Array#sort 稳定排序）。 */
+const TASK_SORT_RANK = { downloading: 0, active: 1, pending: 1 };
 function taskSortKey(t) {
-  return ACTIVE_STATUSES.includes(t.status) ? 0 : 1;
+  return TASK_SORT_RANK[t.status] ?? 2;
 }
 
 function createTaskRow(t) {

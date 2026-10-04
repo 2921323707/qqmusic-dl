@@ -95,9 +95,15 @@ export function getTask(db, id) {
 }
 
 export function listTasks(db, statuses) {
-  // 排序：进行中/等待中 > 已结束（成功/失败/取消）；同档内新的在前，
+  // 排序：下载中(0) > 等待/处理中(1) > 已结束(2)（成功/失败/取消）；
+  // 批量下载时正在跑的任务置顶，符合用户视线预期。同档内新的在前，
   // 同毫秒批量创建的用 rowid（插入序）做稳定次序
-  const order = `ORDER BY CASE WHEN status IN ('active','downloading','pending') THEN 0 ELSE 1 END,
+  const order = `ORDER BY CASE status
+      WHEN 'downloading' THEN 0
+      WHEN 'active' THEN 1
+      WHEN 'pending' THEN 1
+      ELSE 2
+    END,
     created_at DESC, rowid DESC LIMIT 500`;
   if (statuses && statuses.length > 0) {
     const marks = statuses.map(() => '?').join(',');
