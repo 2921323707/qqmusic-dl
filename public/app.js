@@ -83,7 +83,7 @@ const state = {
   library: { q: '', list: [], missing: 0, pendingDelete: null },
   playlist: { input: '', info: null, songs: [], selected: new Set() },
   player: { file: null, list: [], index: -1, seeking: false },
-  lyrics: { fileId: null, lines: [], loaded: false, panelOpen: false, pip: null, pipFont: 26, timer: null, activeIndex: -1 },
+  lyrics: { fileId: null, lines: [], loaded: false, panelOpen: false, pip: null, native: false, pipFont: 26, timer: null, activeIndex: -1 },
   qr: { qrId: null, timer: null },
 };
 
@@ -925,7 +925,7 @@ function playFile(file, list = [], index = -1) {
   document.body.classList.add('has-player');
   highlightPlayingRow();
   // 歌词面板/悬浮窗开启状态下，换歌时重新加载歌词
-  if (state.lyrics.panelOpen || state.lyrics.pip) loadLyricsFor(file.id);
+  if (state.lyrics.panelOpen || state.lyrics.pip || state.lyrics.native) loadLyricsFor(file.id);
 }
 
 function togglePlay() {
@@ -1164,6 +1164,14 @@ function syncLyrics(force = false) {
       pf.style.width = `${(t / audio.duration) * 100}%`;
     }
   }
+  // 原生桌面歌词（macOS App 内）
+  if (st.native) {
+    const cur = idx >= 0 ? st.lines[idx].text : (state.player.file?.title || '');
+    const prev = idx > 0 ? st.lines[idx - 1].text : '';
+    const next = idx >= 0 && idx < st.lines.length - 1 ? st.lines[idx + 1].text : '';
+    const progress = Number.isFinite(audio.duration) && audio.duration > 0 ? t / audio.duration : 0;
+    nativeLyricsPost({ action: 'update', cur, prev, next, progress });
+  }
 }
 
 function startLyricsSync() {
@@ -1179,6 +1187,23 @@ function stopLyricsSync() {
 }
 
 /* —— 桌面歌词（Document Picture-in-Picture 置顶悬浮窗） —— */
+
+/** macOS App 注入的原生歌词窗桥；浏览器里为 null */
+function nativeLyricsBridge() {
+  return window.webkit?.messageHandlers?.qqdlLyrics ?? null;
+}
+
+/** 向原生歌词窗发消息；返回是否发送成功 */
+function nativeLyricsPost(payload) {
+  const bridge = nativeLyricsBridge();
+  if (!bridge) return false;
+  try {
+    bridge.postMessage(payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const PIP_STYLE = `
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1209,12 +1234,16 @@ body:hover #pip-ctrl { opacity: .8; }
 `;
 
 async function toggleDesktopLyrics() {
-  if (state.lyrics.pip) {
+  if (state.lyrics.pip || state.lyrics.native) {
     closeDesktopLyrics();
     return;
   }
+  if (nativeLyricsBridge()) {
+    await openNativeDesktopLyrics();
+    return;
+  }
   if (!('documentPictureInPicture' in window)) {
-    toast('当前浏览器不支持桌面歌词（需 Chrome/Edge 116+），已打开页面歌词', 'error');
+    toast('当前环境不支持桌面歌词，已打开页面歌词', 'error');
     openLyricsPanel();
     return;
   }
@@ -1283,13 +1312,32 @@ async function toggleDesktopLyrics() {
   }
 }
 
+/** 原生桌面歌词：macOS App 内的置顶悬浮窗 */
+async function openNativeDesktopLyrics() {
+  if (!state.player.file) {
+    toast('先播放一首歌曲再开启桌面歌词', 'error');
+    return;
+  }
+  state.lyrics.native = true;
+  nativeLyricsPost({ action: 'open', font: state.lyrics.pipFont });
+  $('#player-desktop-lyrics-btn').classList.add('is-on');
+  await loadLyricsFor(state.player.file.id);
+  startLyricsSync();
+  syncLyrics(true);
+}
+
 function setPipFont(size) {
   state.lyrics.pipFont = Math.min(48, Math.max(14, size));
   const wrap = state.lyrics.pip?.document.getElementById('pip');
   if (wrap) wrap.style.setProperty('--fs', `${state.lyrics.pipFont}px`);
+  if (state.lyrics.native) nativeLyricsPost({ action: 'font', font: state.lyrics.pipFont });
 }
 
 function closeDesktopLyrics() {
+  if (state.lyrics.native) {
+    state.lyrics.native = false;
+    nativeLyricsPost({ action: 'close' });
+  }
   if (state.lyrics.pip) state.lyrics.pip.close();
   state.lyrics.pip = null;
   $('#player-desktop-lyrics-btn').classList.remove('is-on');
@@ -1298,8 +1346,24 @@ function closeDesktopLyrics() {
 
 /** 面板与悬浮窗都关闭时停止同步轮询 */
 function stopLyricsSyncIfIdle() {
-  if (!state.lyrics.panelOpen && !state.lyrics.pip) stopLyricsSync();
+  if (!state.lyrics.panelOpen && !state.lyrics.pip && !state.lyrics.native) stopLyricsSync();
 }
+
+/* 原生歌词窗回调（由 macOS App 调用） */
+window.qqdlToggleDesktopLyrics = () => { toggleDesktopLyrics(); };
+window.qqdlLyricsClosed = () => {
+  state.lyrics.native = false;
+  $('#player-desktop-lyrics-btn').classList.remove('is-on');
+  stopLyricsSyncIfIdle();
+};
+window.qqdlLyricsFont = (size) => {
+  const n = Number(size);
+  if (Number.isFinite(n)) state.lyrics.pipFont = Math.min(48, Math.max(14, n));
+};
+window.qqdlLyricsSeek = () => {
+  const idx = state.lyrics.activeIndex;
+  if (idx >= 0) seekToLyricLine(idx);
+};
 
 /* ============================================================
    8.5 歌单页（解析 / 勾选 / 批量下载）
