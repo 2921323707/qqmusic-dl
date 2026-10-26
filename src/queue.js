@@ -15,8 +15,18 @@ import { runTask, isRetryable } from './task.js';
 const ACTIVE_STATUSES = ['active', 'downloading'];
 
 export class DownloadQueue {
-  constructor(db) {
+  constructor(
+    db,
+    {
+      taskRunner = runTask,
+      retryPredicate = isRetryable,
+      retryDelayMs = (attempts) => 2000 * attempts,
+    } = {},
+  ) {
     this.db = db;
+    this.taskRunner = taskRunner;
+    this.retryPredicate = retryPredicate;
+    this.retryDelayMs = retryDelayMs;
     this.running = 0;
     this.stopped = false;
     /** taskId -> AbortController */
@@ -70,7 +80,8 @@ export class DownloadQueue {
     if (this.stopped) return;
     const { concurrency } = getSettings(this.db);
     while (this.running < concurrency) {
-      const task = dbOps.claimNextPending(this.db);
+      // 退避中的任务仍保持 pending 状态，但不能在定时器到期前被重新领取。
+      const task = dbOps.claimNextPending(this.db, [...this.retryTimers.keys()]);
       if (!task) break;
       this.running++;
       this.worker(task).catch(() => {
@@ -85,7 +96,7 @@ export class DownloadQueue {
     this.signals.set(task.id, controller);
     dbOps.updateTask(this.db, task.id, { status: 'active' });
     try {
-      const result = await runTask(task, {
+      const result = await this.taskRunner(task, {
         db: this.db,
         signal: controller.signal,
         onProgress: (received, total) => {
@@ -123,9 +134,9 @@ export class DownloadQueue {
       const { maxRetries } = getSettings(this.db);
       if (e?.code === 'ABORTED') {
         dbOps.updateTask(this.db, task.id, { status: 'canceled', attempts, error: '已取消' });
-      } else if (attempts < maxRetries && isRetryable(e)) {
+      } else if (attempts < maxRetries && this.retryPredicate(e)) {
         dbOps.updateTask(this.db, task.id, { status: 'pending', attempts, error: e.message });
-        const delay = 2000 * attempts;
+        const delay = this.retryDelayMs(attempts);
         const timer = setTimeout(() => {
           this.retryTimers.delete(task.id);
           this.pump();
@@ -172,7 +183,6 @@ export class DownloadQueue {
 
   /** 清空已结束任务（成功/失败/取消）。带重试定时器的失败任务先取消定时器，避免删库后定时器把任务复活。 */
   clearFinished() {
-    let cleared = 0;
     const rows = this.db
       .prepare(`SELECT id, status FROM tasks WHERE status IN ('success', 'failed', 'canceled')`)
       .all();
@@ -183,7 +193,7 @@ export class DownloadQueue {
         this.retryTimers.delete(row.id);
       }
     }
-    cleared = dbOps.clearFinishedTasks(this.db);
+    const cleared = dbOps.clearFinishedTasks(this.db);
     console.log(`[queue] 清空已结束任务 ${cleared} 条`);
     return cleared;
   }

@@ -15,14 +15,14 @@
   - 浏览器可播：MP3 / FLAC（含 192kHz 24bit 母带）/ OGG / AAC
   - 浏览器**不能**播：D004 杜比全景声（.mp4，E-AC3 编码）——文件本身完好，请用本地播放器（foobar2000 / VLC / Poweramp）打开；网页播放会提示原因
 - 📂 **资源管理器联动**：任务页「打开目录」一键打开下载目录；媒体库每行悬停可「定位」（在资源管理器中选中文件）或「删除」（可选连文件一起删，空歌曲文件夹自动清理）
-- 🖥️ **桌面歌词**：播放条「桌面」按钮开启置顶悬浮歌词窗（Document Picture-in-Picture，需 Chrome/Edge 116+），显示上/当前/下三行 + 进度条，支持字号调节与点击跳转；「词」按钮为页面内歌词面板。不支持的浏览器自动降级为页面歌词
+- 🖥️ **桌面歌词**：Windows 桌面版使用 Electron 独立无边框置顶窗口，macOS 桌面版使用原生置顶歌词窗；浏览器版使用 Document Picture-in-Picture（Chrome/Edge 116+）。显示上/当前/下三行 + 进度条，支持字号调节、拖动、点击跳转和关闭；「词」按钮为页面内歌词面板
 - 🔐 **登录管理**：QQ 扫码登录，凭证 AES-256-GCM 加密落盘，过期自动探测提醒
 - 🤖 **Agent API**：完整 REST 接口，curl 即可编程化调度（搜索 → 建任务 → 查进度 → 媒体库）
 - 🖥️ **Web UI**：零构建单页应用，深色主题
 
 ## 快速开始
 
-要求 Node.js ≥ 22.5（使用内置 `node:sqlite`，无需编译）。
+要求 Node.js ≥ 22.12（使用内置 `node:sqlite`，无需编译）。
 
 ```powershell
 cd qqmusic-dl
@@ -31,6 +31,34 @@ npm start
 ```
 
 启动后访问 <http://127.0.0.1:7800>。
+
+### Windows 桌面版
+
+项目使用 Electron 将现有 Fastify 服务封装为原生应用窗口，服务仍只监听本机 `127.0.0.1`。
+
+```powershell
+# 开发模式：直接打开桌面应用
+npm run desktop
+
+# 生成 NSIS 安装包
+npm run dist
+```
+
+构建产物位于 `dist/`：
+
+- `qqmusic-dl-Setup-<version>.exe`：可选择安装目录的安装版
+
+安装版默认数据目录为 `%APPDATA%\qqmusic-dl\data`，下载目录为 `%USERPROFILE%\Music\qqmusic-dl`。首次启动会尝试从可执行文件目录或当前目录的 `data/` 迁移数据库与登录凭证，不会自动复制已下载音乐。仍可用 `QQDL_DATA_DIR`、`QQDL_DOWNLOAD_DIR`、`QQDL_HOST` 和 `QQDL_PORT` 覆盖默认值。
+
+关闭主窗口会最小化到系统托盘；托盘菜单可重新显示主界面、打开下载目录或完全退出。构建产物未做代码签名，Windows SmartScreen 可能提示“未知发布者”。
+
+### 开发检查
+
+```powershell
+npm run check
+```
+
+该命令依次执行 ESLint、Prettier 格式检查和无外网依赖的 Node 测试。GitHub Actions 会在 `main` 分支推送和 Pull Request 上运行同一套检查。
 
 首次使用 VIP 音质需登录：Web UI 右上角「扫码登录」，或用 API：
 

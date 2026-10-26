@@ -2,6 +2,8 @@
  * qqmusic-dl 服务入口。
  */
 
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import Fastify from 'fastify';
 import { config, ensureDirs } from './config.js';
 import { openDatabase, migrateNamingTemplate } from './db.js';
@@ -10,7 +12,10 @@ import { DownloadQueue } from './queue.js';
 import apiRoutes from './routes/api.js';
 import uiRoutes from './routes/ui.js';
 
-async function main() {
+export async function startServer(options = {}) {
+  const host = options.host ?? config.host;
+  const port = options.port ?? config.port;
+
   await ensureDirs();
 
   const db = openDatabase(config.dataDir);
@@ -94,26 +99,62 @@ async function main() {
   );
   authTimer.unref();
 
-  const shutdown = async () => {
-    console.log('\n[server] 正在退出...');
-    clearInterval(authTimer);
-    queue.stop();
-    await fastify.close();
-    db.close();
-    process.exit(0);
+  let stopping = null;
+  const stop = () => {
+    if (!stopping) {
+      stopping = (async () => {
+        clearInterval(authTimer);
+        queue.stop();
+        await fastify.close();
+        db.close();
+      })();
+    }
+    return stopping;
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
 
   queue.start();
 
-  await fastify.listen({ host: config.host, port: config.port });
-  console.log(`[server] qqmusic-dl 已启动: http://${config.host}:${config.port}`);
+  try {
+    await fastify.listen({ host, port });
+  } catch (err) {
+    await stop();
+    throw err;
+  }
+
+  console.log(`[server] qqmusic-dl 已启动: http://${host}:${port}`);
   console.log(`[server] 下载目录: ${config.downloadDir}`);
   if (config.apiToken) console.log('[server] API Token 保护已启用');
+
+  return { host, port, fastify, db, queue, stop };
 }
 
-main().catch((err) => {
-  console.error('[server] 启动失败:', err);
-  process.exit(1);
-});
+const isDirectRun = (() => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return pathToFileURL(path.resolve(entry)).href === import.meta.url;
+  } catch {
+    return false;
+  }
+})();
+
+if (isDirectRun) {
+  startServer()
+    .then((handle) => {
+      const shutdown = async () => {
+        console.log('\n[server] 正在退出...');
+        try {
+          await handle.stop();
+        } catch (err) {
+          console.error('[server] 关闭失败:', err);
+        }
+        process.exit(0);
+      };
+      process.on('SIGINT', shutdown);
+      process.on('SIGTERM', shutdown);
+    })
+    .catch((err) => {
+      console.error('[server] 启动失败:', err);
+      process.exit(1);
+    });
+}

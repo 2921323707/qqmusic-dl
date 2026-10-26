@@ -1,0 +1,227 @@
+:root {
+  --surface: rgba(247, 251, 255, 0.96);
+  --surface-soft: rgba(255, 249, 252, 0.9);
+  --border: rgba(110, 164, 201, 0.26);
+  --text: #344b61;
+  --muted: rgba(83, 108, 130, 0.56);
+  --accent-blue: #8bc6eb;
+  --accent-pink: #efa6bd;
+  --accent-soft: rgba(239, 166, 189, 0.2);
+  --font-size: 28px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  padding: 7px;
+  color: var(--text);
+  font-family: "Microsoft YaHei UI", "HarmonyOS Sans SC", sans-serif;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+}
+
+.lyrics-shell {
+  position: relative;
+  display: grid;
+  grid-template-rows: 26px minmax(0, 1fr) 3px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      112deg,
+      rgba(224, 244, 255, 0.98) 0%,
+      var(--surface) 46%,
+      rgba(255, 239, 246, 0.98) 100%
+    );
+  box-shadow:
+    0 14px 38px rgba(73, 119, 151, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.titlebar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 5px 0 10px;
+  border-bottom: 1px solid rgba(115, 164, 197, 0.14);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(211, 238, 253, 0.58),
+      rgba(255, 255, 255, 0.2) 52%,
+      rgba(255, 229, 239, 0.54)
+    );
+}
+
+.track-state {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.track-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: cover;
+  opacity: 0.62;
+  box-shadow: 0 0 0 2px rgba(139, 198, 235, 0.14);
+  transition:
+    opacity 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.track-icon.is-playing {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px rgba(239, 166, 189, 0.24),
+    0 2px 8px rgba(97, 141, 173, 0.2);
+}
+
+.track-title {
+  overflow: hidden;
+  color: rgba(66, 91, 113, 0.67);
+  font-size: 11px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-controls {
+  -webkit-app-region: no-drag;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.lyrics-shell:hover .window-controls,
+.window-controls:focus-within {
+  opacity: 1;
+}
+
+.icon-button {
+  display: inline-grid;
+  min-width: 25px;
+  height: 20px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(70, 94, 116, 0.72);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: rgba(134, 195, 233, 0.2);
+  color: #3f5c72;
+}
+
+.close-button {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.close-button:hover {
+  background: rgba(239, 166, 189, 0.28);
+  color: #8c4a61;
+}
+
+.lyrics-lines {
+  -webkit-app-region: no-drag;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 18px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  cursor: default;
+}
+
+.lyrics-lines.can-seek {
+  cursor: pointer;
+}
+
+.lyric-line {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  line-height: 1.22;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lyric-previous,
+.lyric-next {
+  min-height: 1.22em;
+  color: var(--muted);
+  font-size: calc(var(--font-size) * 0.54);
+}
+
+.lyric-current {
+  min-height: 1.25em;
+  color: var(--text);
+  font-size: var(--font-size);
+  font-weight: 600;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.9),
+    0 4px 16px rgba(97, 141, 173, 0.16);
+  transition: color 140ms ease;
+}
+
+.lyrics-lines.can-seek:hover .lyric-current {
+  color: #b55f7d;
+}
+
+.progress-track {
+  overflow: hidden;
+  margin: 0 10px 1px;
+  border-radius: 2px;
+  background: rgba(111, 162, 195, 0.14);
+}
+
+.progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-pink));
+  transition: width 180ms linear;
+}
+
+.icon-button:focus-visible,
+.lyrics-lines:focus-visible {
+  outline: 2px solid rgba(114, 178, 218, 0.72);
+  outline-offset: -2px;
+}

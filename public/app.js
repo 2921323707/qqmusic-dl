@@ -83,7 +83,7 @@ const state = {
   library: { q: '', list: [], missing: 0, pendingDelete: null },
   playlist: { input: '', info: null, songs: [], selected: new Set() },
   player: { file: null, list: [], index: -1, seeking: false },
-  lyrics: { fileId: null, lines: [], loaded: false, panelOpen: false, pip: null, native: false, pipFont: 26, timer: null, activeIndex: -1 },
+  lyrics: { fileId: null, lines: [], loaded: false, panelOpen: false, pip: null, native: false, pipFont: 26, desktopOpen: false, timer: null, activeIndex: -1 },
   qr: { qrId: null, timer: null },
 };
 
@@ -925,7 +925,9 @@ function playFile(file, list = [], index = -1) {
   document.body.classList.add('has-player');
   highlightPlayingRow();
   // 歌词面板/悬浮窗开启状态下，换歌时重新加载歌词
-  if (state.lyrics.panelOpen || state.lyrics.pip || state.lyrics.native) loadLyricsFor(file.id);
+  if (state.lyrics.panelOpen || state.lyrics.pip || state.lyrics.native || state.lyrics.desktopOpen) {
+    loadLyricsFor(file.id);
+  }
 }
 
 function togglePlay() {
@@ -1147,29 +1149,43 @@ function syncLyrics(force = false) {
       box.scrollTo({ top: Math.max(0, target), behavior: force ? 'auto' : 'smooth' });
     }
   }
-  // 桌面悬浮窗
+  const cur = idx >= 0 ? st.lines[idx].text : (state.player.file?.title || '');
+  const prev = idx > 0 ? st.lines[idx - 1].text : '';
+  const next = idx >= 0 && idx < st.lines.length - 1 ? st.lines[idx + 1].text : '';
+  const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+  const progress = duration > 0 ? Math.min(1, Math.max(0, t / duration)) : 0;
+
+  // Electron 桌面壳的独立置顶窗口
+  if (st.desktopOpen && window.qqdlDesktopLyrics) {
+    window.qqdlDesktopLyrics.update({
+      title: state.player.file?.title || '桌面歌词',
+      previous: prev,
+      current: cur,
+      next,
+      progress,
+      currentTime: t,
+      duration,
+      seekTime: idx >= 0 && Number.isFinite(st.lines[idx]?.time) ? st.lines[idx].time : null,
+      playing: Boolean(audio.src) && !audio.paused && !audio.ended,
+    });
+  }
+
+  // 浏览器 Document Picture-in-Picture 悬浮窗
   if (st.pip && st.pip.document) {
     const set = (id, text) => {
       const el = st.pip.document.getElementById(id);
       if (el && el.textContent !== text) el.textContent = text;
     };
-    const cur = idx >= 0 ? st.lines[idx].text : (state.player.file?.title || '');
-    const prev = idx > 0 ? st.lines[idx - 1].text : '';
-    const next = idx >= 0 && idx < st.lines.length - 1 ? st.lines[idx + 1].text : '';
     set('pip-cv', cur);
     set('pip-pv', prev);
     set('pip-nv', next);
     const pf = st.pip.document.getElementById('pip-pf');
-    if (pf && Number.isFinite(audio.duration) && audio.duration > 0) {
-      pf.style.width = `${(t / audio.duration) * 100}%`;
+    if (pf && duration > 0) {
+      pf.style.width = `${progress * 100}%`;
     }
   }
   // 原生桌面歌词（macOS App 内）
   if (st.native) {
-    const cur = idx >= 0 ? st.lines[idx].text : (state.player.file?.title || '');
-    const prev = idx > 0 ? st.lines[idx - 1].text : '';
-    const next = idx >= 0 && idx < st.lines.length - 1 ? st.lines[idx + 1].text : '';
-    const progress = Number.isFinite(audio.duration) && audio.duration > 0 ? t / audio.duration : 0;
     nativeLyricsPost({ action: 'update', cur, prev, next, progress });
   }
 }
@@ -1186,7 +1202,7 @@ function stopLyricsSync() {
   }
 }
 
-/* —— 桌面歌词（Document Picture-in-Picture 置顶悬浮窗） —— */
+/* —— 桌面歌词（Electron 原生置顶窗口 / 浏览器 Document PiP） —— */
 
 /** macOS App 注入的原生歌词窗桥；浏览器里为 null */
 function nativeLyricsBridge() {
@@ -1234,6 +1250,10 @@ body:hover #pip-ctrl { opacity: .8; }
 `;
 
 async function toggleDesktopLyrics() {
+  if (window.qqdlDesktopLyrics) {
+    await toggleDesktopShellLyrics();
+    return;
+  }
   if (state.lyrics.pip || state.lyrics.native) {
     closeDesktopLyrics();
     return;
@@ -1326,6 +1346,69 @@ async function openNativeDesktopLyrics() {
   syncLyrics(true);
 }
 
+async function toggleDesktopShellLyrics() {
+  const st = state.lyrics;
+  const bridge = window.qqdlDesktopLyrics;
+  if (!bridge) {
+    toast('当前桌面壳不支持桌面歌词', 'error');
+    return;
+  }
+  if (st.desktopOpen) {
+    closeDesktopLyrics();
+    return;
+  }
+  if (!state.player.file) {
+    toast('先播放一首歌曲再开启桌面歌词', 'error');
+    return;
+  }
+
+  const audio = $('#audio-el');
+  const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+  st.desktopOpen = true;
+  $('#player-desktop-lyrics-btn').classList.add('is-on');
+
+  try {
+    await bridge.open({
+      title: state.player.file.title || '桌面歌词',
+      previous: '',
+      current: state.player.file.title || '播放歌曲后显示歌词',
+      next: '',
+      progress: duration > 0 ? Math.min(1, audio.currentTime / duration) : 0,
+      currentTime: audio.currentTime,
+      duration,
+      seekTime: null,
+      playing: Boolean(audio.src) && !audio.paused && !audio.ended,
+    });
+    await loadLyricsFor(state.player.file.id);
+    startLyricsSync();
+    syncLyrics(true);
+  } catch (err) {
+    st.desktopOpen = false;
+    $('#player-desktop-lyrics-btn').classList.remove('is-on');
+    stopLyricsSyncIfIdle();
+    toast(`桌面歌词开启失败: ${err.message}`, 'error');
+  }
+}
+
+function setupDesktopLyricsBridge() {
+  const bridge = window.qqdlDesktopLyrics;
+  if (!bridge) return;
+
+  bridge.onClosed(() => {
+    state.lyrics.desktopOpen = false;
+    $('#player-desktop-lyrics-btn').classList.remove('is-on');
+    stopLyricsSyncIfIdle();
+  });
+
+  bridge.onSeek((seconds) => {
+    if (!state.player.file || !Number.isFinite(seconds) || seconds < 0) return;
+    const audio = $('#audio-el');
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    audio.currentTime = duration > 0 ? Math.min(duration, seconds) : seconds;
+    syncLyrics(true);
+  });
+}
+
 function setPipFont(size) {
   state.lyrics.pipFont = Math.min(48, Math.max(14, size));
   const wrap = state.lyrics.pip?.document.getElementById('pip');
@@ -1340,13 +1423,19 @@ function closeDesktopLyrics() {
   }
   if (state.lyrics.pip) state.lyrics.pip.close();
   state.lyrics.pip = null;
+  if (state.lyrics.desktopOpen && window.qqdlDesktopLyrics) {
+    window.qqdlDesktopLyrics.close().catch(() => {});
+  }
+  state.lyrics.desktopOpen = false;
   $('#player-desktop-lyrics-btn').classList.remove('is-on');
   stopLyricsSyncIfIdle();
 }
 
 /** 面板与悬浮窗都关闭时停止同步轮询 */
 function stopLyricsSyncIfIdle() {
-  if (!state.lyrics.panelOpen && !state.lyrics.pip && !state.lyrics.native) stopLyricsSync();
+  if (!state.lyrics.panelOpen && !state.lyrics.pip && !state.lyrics.native && !state.lyrics.desktopOpen) {
+    stopLyricsSync();
+  }
 }
 
 /* 原生歌词窗回调（由 macOS App 调用） */
@@ -1659,6 +1748,7 @@ function bindEvents() {
   $('#player-desktop-lyrics-btn').addEventListener('click', toggleDesktopLyrics);
   $('#lyrics-close').addEventListener('click', closeLyricsPanel);
   $('#lyrics-mask').addEventListener('click', closeLyricsPanel);
+  setupDesktopLyricsBridge();
   const audio = $('#audio-el');
   audio.addEventListener('timeupdate', onPlayerTime);
   audio.addEventListener('loadedmetadata', onPlayerTime);

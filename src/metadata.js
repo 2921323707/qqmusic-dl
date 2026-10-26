@@ -8,7 +8,7 @@
  */
 
 import path from 'node:path';
-import { readFile, writeFile, rename, rm } from 'node:fs/promises';
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import NodeID3 from 'node-id3';
 
 // ---------------- FLAC ----------------

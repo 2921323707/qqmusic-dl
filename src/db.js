@@ -123,7 +123,10 @@ export function clearFinishedTasks(db) {
 }
 
 /** 领取下一个 pending 任务（置为 active）。同一 mid+quality 已有活动任务时跳过。 */
-export function claimNextPending(db) {
+export function claimNextPending(db, excludedIds = []) {
+  const excluded = excludedIds.length
+    ? `AND id NOT IN (${excludedIds.map(() => '?').join(',')})`
+    : '';
   const row = db
     .prepare(
       `SELECT ${TASK_COLS} FROM tasks
@@ -133,9 +136,10 @@ export function claimNextPending(db) {
            WHERE t2.mid = tasks.mid AND t2.quality = tasks.quality
              AND t2.status IN ('active', 'downloading')
          )
+         ${excluded}
        ORDER BY created_at ASC LIMIT 1`,
     )
-    .get();
+    .get(...excludedIds);
   if (!row) return null;
   db.prepare(`UPDATE tasks SET status = 'active', updated_at = ? WHERE id = ?`).run(now(), row.id);
   return getTask(db, row.id);

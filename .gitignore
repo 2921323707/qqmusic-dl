@@ -10,6 +10,9 @@ downloads/
 *.log
 *.part
 
+# Windows 桌面安装包与打包中间产物
+dist/
+
 # 编辑器/系统噪音
 .DS_Store
 Thumbs.db

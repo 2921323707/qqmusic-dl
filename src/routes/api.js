@@ -476,7 +476,7 @@ export default async function apiRoutes(fastify) {
   fastify.get('/api/library/:id/lrc', async (req, reply) => {
     const row = dbOps.getFile(db, req.params.id);
     if (!row) throw httpError(404, 'FILE_NOT_FOUND', '文件记录不存在');
-    let lrc = '';
+    let lrc;
     try {
       lrc = await readFile(row.filePath.replace(/\.[^.]+$/, '') + '.lrc', 'utf8');
     } catch {

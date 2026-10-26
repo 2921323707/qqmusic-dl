@@ -1,0 +1,6 @@
+data/
+dist/
+downloads/
+node_modules/
+vendor/
+package-lock.json

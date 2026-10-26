@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+  >
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>桌面歌词</title>
+  <link rel="stylesheet" href="./lyrics.css">
+</head>
+<body>
+  <main class="lyrics-shell" id="lyrics-shell" aria-live="polite">
+    <header class="titlebar">
+      <div class="track-state">
+        <img class="track-icon" id="state-icon" src="../public/music_icon.png" alt="" aria-hidden="true" draggable="false">
+        <span class="track-title" id="track-title">桌面歌词</span>
+      </div>
+      <div class="window-controls">
+        <button class="icon-button" id="font-down" type="button" title="减小字号" aria-label="减小字号">A-</button>
+        <button class="icon-button" id="font-up" type="button" title="增大字号" aria-label="增大字号">A+</button>
+        <button class="icon-button close-button" id="close-button" type="button" title="关闭桌面歌词" aria-label="关闭桌面歌词">×</button>
+      </div>
+    </header>
+
+    <button class="lyrics-lines" id="lyrics-lines" type="button" title="点击当前歌词跳转">
+      <span class="lyric-line lyric-previous" id="lyric-previous"></span>
+      <span class="lyric-line lyric-current" id="lyric-current">播放歌曲后显示歌词</span>
+      <span class="lyric-line lyric-next" id="lyric-next"></span>
+    </button>
+
+    <footer class="progress-track" aria-hidden="true">
+      <span class="progress-fill" id="progress-fill"></span>
+    </footer>
+  </main>
+  <script src="./lyrics.js"></script>
+</body>
+</html>

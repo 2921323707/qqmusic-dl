@@ -5,7 +5,6 @@
 import path from 'node:path';
 import { createWriteStream } from 'node:fs';
 import { mkdir, rename, rm, stat } from 'node:fs/promises';
-import { pipeline } from 'node:stream/promises';
 import { config } from './config.js';
 import { getSongDetail, resolvePlayUrl, getLyrics } from './qq.js';
 import { renderTemplate } from './util/naming.js';
@@ -36,14 +35,25 @@ async function fileExists(p) {
   }
 }
 
+const defaultOperations = {
+  getSongDetail,
+  resolvePlayUrl,
+  getLyrics,
+  writeMetadata,
+  writeSidecarLrc,
+  fetchCover,
+  fetch: (...args) => globalThis.fetch(...args),
+};
+
 /** 流式下载到 dest（先写 .part 再原子改名），进度回调 received/total */
-async function streamDownload(url, dest, { onProgress, signal }) {
-  const res = await fetch(url, {
+async function streamDownload(url, dest, { onProgress, signal, fetchImpl }) {
+  const timeoutSignal = AbortSignal.timeout(config.requestTimeoutMs);
+  const res = await fetchImpl(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       Referer: 'https://y.qq.com/',
     },
-    signal: AbortSignal.any([signal, AbortSignal.timeout(config.requestTimeoutMs)]),
+    signal: signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal,
   });
   if (!res.ok || !res.body) {
     // 404 = 文件不存在（如臻品系假链），重试无意义
@@ -86,15 +96,16 @@ async function streamDownload(url, dest, { onProgress, signal }) {
  * 执行下载任务。
  * @returns {Promise<{filePath: string, quality: object, received: number, total: number, dedupedFile: boolean}>}
  */
-export async function runTask(task, { db, onProgress, signal }) {
+export async function runTask(task, { db, onProgress, signal, operations = {} }) {
   const settings = getSettings(db);
+  const ops = { ...defaultOperations, ...operations };
 
   // 1. 详情
-  const detail = await getSongDetail(task.mid);
+  const detail = await ops.getSongDetail(task.mid);
   if (!detail) throw new TaskError('SONG_NOT_FOUND', `获取歌曲详情失败: ${task.mid}`);
 
   // 2. 取链（按需降级）
-  const resolved = await resolvePlayUrl(task.mid, task.quality, {
+  const resolved = await ops.resolvePlayUrl(task.mid, task.quality, {
     fallback: task.fallback ? settings.fallback : false,
   });
   if (!resolved.url) {
@@ -121,14 +132,18 @@ export async function runTask(task, { db, onProgress, signal }) {
   }
 
   // 4. 下载
-  const { received, total } = await streamDownload(resolved.url, dest, { onProgress, signal });
+  const { received, total } = await streamDownload(resolved.url, dest, {
+    onProgress,
+    signal,
+    fetchImpl: ops.fetch,
+  });
 
   // 5. 元数据（尽力而为，失败不影响下载结果）
   try {
-    const { lyric, trans } = await getLyrics(task.mid);
+    const { lyric, trans } = await ops.getLyrics(task.mid);
     const lrc = [lyric, trans].filter(Boolean).join('\n\n');
-    const { buffer, mime } = await fetchCover(detail.cover);
-    await writeMetadata(
+    const { buffer, mime } = await ops.fetchCover(detail.cover);
+    await ops.writeMetadata(
       dest,
       {
         title: vars.title,
@@ -140,7 +155,7 @@ export async function runTask(task, { db, onProgress, signal }) {
       buffer,
       mime,
     );
-    await writeSidecarLrc(dest, lrc);
+    await ops.writeSidecarLrc(dest, lrc);
   } catch (e) {
     console.warn(`[task] 元数据写入失败(${path.basename(dest)}): ${e.message}`);
   }

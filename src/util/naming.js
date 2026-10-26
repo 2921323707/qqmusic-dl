@@ -4,7 +4,9 @@
 
 import path from 'node:path';
 
-const ILLEGAL = /[<>:"/\\|?*\x00-\x1f]/g; // Windows 非法字符（含控制字符）
+// Windows 文件名不允许控制字符。
+// eslint-disable-next-line no-control-regex
+const ILLEGAL = /[<>:"/\\|?*\x00-\x1f]/g;
 const RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
 
 /** 清洗单个路径片段：去非法字符、去首尾点空格、截断长度 */
@@ -33,8 +35,9 @@ export function renderTemplate(template, vars, baseDir) {
   );
   const segments = rendered
     .split('/')
+    .filter((s) => s && s !== '.' && s !== '..')
     .map((s) => sanitizeSegment(s))
-    .filter((s) => s && s !== '.' && s !== '..');
+    .filter(Boolean);
   if (segments.length === 0) segments.push(sanitizeSegment('unknown'));
   const rel = path.join(...segments);
   const abs = path.resolve(baseDir, rel);
