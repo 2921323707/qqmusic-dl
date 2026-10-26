@@ -699,6 +699,10 @@ body.has-player .app { padding-bottom: 78px; }
 
 .field-label { font-size: 13px; font-weight: 600; }
 
+.path-picker { display: flex; align-items: stretch; gap: 8px; }
+.path-picker input { flex: 1; min-width: 0; }
+.path-picker .btn { flex: none; }
+
 .field-hint { margin: 0; font-size: 12px; color: var(--ink-faint); line-height: 1.8; }
 .field-hint code {
   padding: 1px 5px;

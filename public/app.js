@@ -1653,6 +1653,24 @@ function fillQualityOptions(select, qualities, selected) {
   if (select.value === '' && select.options.length > 0) select.selectedIndex = 0;
 }
 
+async function chooseDownloadDirectory() {
+  const bridge = window.qqdlDesktopSettings;
+  const button = $('#cfg-dir-pick');
+  if (!bridge?.chooseDownloadDirectory) return;
+
+  button.disabled = true;
+  try {
+    const selected = await bridge.chooseDownloadDirectory($('#cfg-dir').value.trim());
+    if (typeof selected === 'string' && selected) {
+      $('#cfg-dir').value = selected;
+    }
+  } catch (err) {
+    toast(`无法打开文件夹选择器：${err.message}`, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
 /** 保存设置：PUT /api/config（全量提交） */
 async function onSaveSettings(ev) {
   ev.preventDefault();
@@ -1729,6 +1747,11 @@ function bindEvents() {
   $('#playlist-download-btn').addEventListener('click', onPlaylistDownload);
 
   // 设置保存
+  const settingsBridge = window.qqdlDesktopSettings;
+  if (settingsBridge?.chooseDownloadDirectory) {
+    $('#cfg-dir-pick').hidden = false;
+    $('#cfg-dir-pick').addEventListener('click', chooseDownloadDirectory);
+  }
   $('#settings-form').addEventListener('submit', onSaveSettings);
 
   // 扫码模态框：关闭按钮 / 点击遮罩

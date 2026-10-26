@@ -145,6 +145,7 @@ curl -X POST http://127.0.0.1:7800/api/downloads \
 
 命名模板占位符：`{artist}` `{title}` `{album}` `{quality}` `{year}`，支持 `/` 子目录（如 `{artist}/{album}/{title}`）。
 除环境变量外，以上均可在 Web UI「设置」页或 `PUT /api/config` 热更新（存 SQLite）。
+Windows 桌面版可在「设置 → 下载目录」中点击「选择文件夹」，通过系统原生目录选择窗口设置下载位置。
 
 **默认一歌一文件夹**：`{artist} - {title} [{quality}]/{artist} - {title} [{quality}]`——每首歌的音频与 `.lrc` 同在以其命名的子目录中。想改回平铺或在设置页自定义均可（旧文件不会移动，仅影响新下载）。
 除环境变量外，以上均可在 Web UI「设置」页或 `PUT /api/config` 热更新（存 SQLite）。

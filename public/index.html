@@ -167,7 +167,10 @@
               </div>
               <div class="field">
                 <label class="field-label" for="cfg-dir">下载目录</label>
-                <input id="cfg-dir" type="text" autocomplete="off">
+                <div class="path-picker">
+                  <input id="cfg-dir" type="text" autocomplete="off">
+                  <button class="btn btn-ghost" id="cfg-dir-pick" type="button" hidden>选择文件夹</button>
+                </div>
               </div>
               <div class="field-row">
                 <div class="field">

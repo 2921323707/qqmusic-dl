@@ -18,3 +18,11 @@ contextBridge.exposeInMainWorld(
     onSeek: (callback) => subscribe('desktop-lyrics:seek', callback),
   }),
 );
+
+contextBridge.exposeInMainWorld(
+  'qqdlDesktopSettings',
+  Object.freeze({
+    chooseDownloadDirectory: (currentPath) =>
+      ipcRenderer.invoke('settings:choose-download-directory', currentPath),
+  }),
+);

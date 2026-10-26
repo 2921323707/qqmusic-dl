@@ -223,6 +223,21 @@ async function createWindow() {
 }
 
 function setupIpc() {
+  ipcMain.handle(
+    'settings:choose-download-directory',
+    async (event, currentPath) => {
+      assertMainSender(event);
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: '选择下载目录',
+        defaultPath:
+          resolveExistingDirectory(currentPath) || getMusicPath(),
+        properties: ['openDirectory', 'createDirectory'],
+        buttonLabel: '选择此文件夹',
+      });
+      return result.canceled ? null : result.filePaths[0] || null;
+    },
+  );
+
   ipcMain.handle('desktop-lyrics:open', async (event, state) => {
     assertMainSender(event);
     await openLyricsWindow(normalizeLyricsState(state));
@@ -396,8 +411,20 @@ function isLyricsSender(event) {
   );
 }
 
+function resolveExistingDirectory(value) {
+  if (typeof value !== 'string') return null;
+  const candidate = value.trim();
+  if (!candidate || !path.isAbsolute(candidate)) return null;
+
+  try {
+    return fs.statSync(candidate).isDirectory() ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 function assertMainSender(event) {
-  if (!isMainSender(event)) throw new Error('Invalid desktop lyrics sender');
+  if (!isMainSender(event)) throw new Error('Invalid main window sender');
 }
 
 function createTray() {
