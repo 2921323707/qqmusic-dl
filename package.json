@@ -6,6 +6,7 @@
   "main": "electron/main.js",
   "description": "轻量 QQ 音乐下载服务：Web UI + Agent 可调度的 REST API",
   "author": "qqmusic-dl",
+  "license": "MIT",
   "engines": {
     "node": ">=22.12.0"
   },

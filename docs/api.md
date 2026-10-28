@@ -269,9 +269,9 @@ Base URL：`http://127.0.0.1:7800`（可用 `QQDL_HOST`/`QQDL_PORT` 修改）
 ```json
 {
   "namingTemplate": "{artist} - {title} [{quality}]/{artist} - {title} [{quality}]",
-  "downloadDir": "M:\\Dev\\Projects\\dsh\\workspace\\qqmusic-dl\\downloads",
+  "downloadDir": "C:\\Users\\Alice\\Music\\qqmusic-dl",
   "concurrency": 2,
-  "defaultQuality": "AUTO",
+  "defaultQuality": "F000",
   "fallback": true,
   "maxRetries": 3,
   "qualities": [
@@ -281,6 +281,8 @@ Base URL：`http://127.0.0.1:7800`（可用 `QQDL_HOST`/`QQDL_PORT` 修改）
   ]
 }
 ```
+
+> 示例中的 `qualities` 为节选；实际响应包含全部 17 个音质选项。
 
 > `AUTO`（最高可用）：不同歌曲支持的最高音质不同，AUTO 会逐级从最高音质开始探测，取该歌曲实际可用的最高音质下载；任务完成后 `quality`/`qualityLabel` 更新为实际音质。其余字段见上文。
 
