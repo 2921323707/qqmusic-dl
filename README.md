@@ -21,9 +21,9 @@
 - **Playlist import**: Resolve a public QQ Music playlist, preview its tracks, and select songs for batch download.
 - **17 quality options**: Choose from MP3, AAC, OGG, lossless FLAC, and experimental premium formats. Automatic fallback can move down the quality ladder when the requested format is unavailable.
 - **Reliable download queue**: Configurable concurrency, exponential retry, cancellation, manual retry, duplicate-file detection, and recovery after restart.
-- **Metadata handling**: Embed covers, lyrics, ID3 tags, and Vorbis comments. The app also writes sidecar `.lrc` files and supports configurable output paths.
+- **Metadata handling**: Every format gets sidecar `.cover.jpg/.cover.png/.cover.webp` and `.lrc` files; MP3 and FLAC additionally support embedded covers, ID3 tags, and Vorbis comments. Existing libraries can repair missing covers from the UI.
 - **Built-in player**: Play MP3, FLAC, OGG, and AAC files with range-based streaming, seeking, previous/next controls, and a synchronized lyrics panel.
-- **Library management**: Browse downloaded tracks, reveal files in the system file manager, remove records or files, and clean missing-file entries.
+- **Library management**: Browse downloaded tracks, repair missing covers, reveal files in the system file manager, remove records or files, and clean missing-file entries.
 - **Desktop lyrics**: Use a native always-on-top lyrics window in the desktop app or Document Picture-in-Picture in Chrome and Edge.
 - **Secure local operation**: The Fastify service listens on `127.0.0.1` by default, credentials are encrypted, and the Electron renderer runs with context isolation and sandboxing.
 - **Agent API**: Control search, downloads, tasks, playlists, and the media library over REST.
@@ -287,7 +287,7 @@ qqmusic-dl/
 |   |-- auth.js          # QR login and encrypted credentials
 |   |-- queue.js         # Persistent in-memory download queue
 |   |-- task.js          # Single-download orchestration
-|   |-- metadata.js      # MP3/FLAC/OGG metadata and covers
+|   |-- metadata.js      # Tags, embedded covers, and sidecar covers/lyrics
 |   |-- settings.js      # Runtime settings
 |   |-- routes/          # REST API and static UI routes
 |   `-- util/            # Naming, lyrics, and crypto helpers

@@ -35,6 +35,7 @@ const API = {
   taskRetry: (id) => `/api/tasks/${encodeURIComponent(id)}/retry`,
   library: '/api/library',
   libraryCleanup: '/api/library/cleanup',
+  libraryCoverRefresh: '/api/library/covers/refresh',
   fileAudio: (id) => `/api/library/${encodeURIComponent(id)}/audio`,
   fileCover: (id) => `/api/library/${encodeURIComponent(id)}/cover`,
   fileLrc: (id) => `/api/library/${encodeURIComponent(id)}/lrc`,
@@ -771,7 +772,7 @@ function renderLibrary(files, total) {
 
 function renderLibraryRow(f) {
   const missing = f.exists === false;
-  // 封面缩略图（内嵌封面接口，失败降级为 ♪ 占位）
+  // 封面缩略图（侧车或内嵌封面，失败降级为 ♪ 占位）
   const cover = h('div', { class: 'lib-cover' });
   const img = h('img', { src: API.fileCover(f.id), alt: '', loading: 'lazy' });
   img.addEventListener('error', () => {
@@ -884,6 +885,25 @@ async function onLibraryCleanup() {
     loadLibrary();
   } catch (err) {
     toast(err.message, 'error');
+  }
+}
+
+/** 为旧媒体库手动补齐侧车封面 */
+async function onLibraryCoverRefresh() {
+  const btn = $('#library-cover-refresh-btn');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '修复中…';
+  try {
+    const res = await api(API.libraryCoverRefresh, { method: 'POST', body: '{}' });
+    const message = `封面修复完成：补齐 ${res.repaired}，跳过 ${res.skipped}，失败 ${res.failed}`;
+    toast(message, res.failed > 0 ? 'error' : 'success');
+    await loadLibrary();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
   }
 }
 
@@ -1728,6 +1748,7 @@ function bindEvents() {
 
   // 媒体库：清理失效记录
   $('#library-cleanup-btn').addEventListener('click', onLibraryCleanup);
+  $('#library-cover-refresh-btn').addEventListener('click', onLibraryCoverRefresh);
 
   // 任务页：打开下载目录
   $('#open-download-dir-btn').addEventListener('click', onOpenDownloadDir);

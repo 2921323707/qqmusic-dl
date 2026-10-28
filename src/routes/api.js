@@ -10,7 +10,8 @@ import * as dbOps from '../db.js';
 import * as auth from '../auth.js';
 import * as qq from '../qq.js';
 import { getSettings, updateSettings } from '../settings.js';
-import { extractCover, extractEmbeddedLyrics } from '../metadata.js';
+import { extractEmbeddedLyrics, readCover, removeSidecarCovers } from '../metadata.js';
+import { repairLibraryCovers } from '../cover-repair.js';
 import { randomId } from '../util/crypto.js';
 
 /**
@@ -461,12 +462,15 @@ export default async function apiRoutes(fastify) {
     return reply;
   });
 
-  // 内嵌封面（MP3 ID3 / FLAC PICTURE 块提取）
+  // 封面（侧车优先，MP3 ID3 / FLAC PICTURE 内嵌封面兜底）
   fastify.get('/api/library/:id/cover', async (req, reply) => {
     const row = dbOps.getFile(db, req.params.id);
     if (!row) throw httpError(404, 'FILE_NOT_FOUND', '文件记录不存在');
-    const { buffer, mime } = await extractCover(row.filePath);
-    if (!buffer) throw httpError(404, 'NO_COVER', '未找到内嵌封面');
+    const { buffer, mime } = await readCover(row.filePath);
+    if (!buffer) {
+      reply.header('Cache-Control', 'no-store');
+      throw httpError(404, 'NO_COVER', '未找到封面');
+    }
     reply.header('Cache-Control', 'max-age=86400');
     reply.type(mime);
     return reply.send(buffer);
@@ -493,6 +497,12 @@ export default async function apiRoutes(fastify) {
   fastify.post('/api/library/cleanup', async () => {
     const removed = dbOps.cleanupMissingFiles(db);
     return { removed };
+  });
+
+  // 手动为旧媒体库补齐独立侧车封面
+  fastify.post('/api/library/covers/refresh', async () => {
+    const repair = fastify.coverRepair ?? repairLibraryCovers;
+    return repair(db);
   });
 
   // 在系统文件管理器中打开下载目录
@@ -530,8 +540,11 @@ export default async function apiRoutes(fastify) {
       }
       try {
         await rm(row.filePath, { force: true });
-        // 侧车歌词一并删除
-        await rm(row.filePath.replace(/\.[^.]+$/, '') + '.lrc', { force: true });
+        // 侧车歌词和封面一并删除
+        await Promise.all([
+          rm(row.filePath.replace(/\.[^.]+$/, '') + '.lrc', { force: true }),
+          removeSidecarCovers(row.filePath),
+        ]);
         // 歌曲专属文件夹若已空则一并移除（一歌一文件夹结构）
         const dir = path.dirname(row.filePath);
         if (dir !== path.resolve(downloadDir)) {

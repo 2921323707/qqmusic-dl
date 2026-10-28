@@ -8,7 +8,7 @@ import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import { config } from './config.js';
 import { getSongDetail, resolvePlayUrl, getLyrics } from './qq.js';
 import { renderTemplate } from './util/naming.js';
-import { writeMetadata, writeSidecarLrc, fetchCover } from './metadata.js';
+import { writeMetadata, writeSidecarLrc, fetchCover, saveSidecarCover } from './metadata.js';
 import { getSettings } from './settings.js';
 
 export class TaskError extends Error {
@@ -42,8 +42,51 @@ const defaultOperations = {
   writeMetadata,
   writeSidecarLrc,
   fetchCover,
+  saveSidecarCover,
   fetch: (...args) => globalThis.fetch(...args),
 };
+
+async function bestEffort(dest, label, fn) {
+  try {
+    await fn();
+  } catch (e) {
+    console.warn(`[task] ${label}失败(${path.basename(dest)}): ${e.message}`);
+  }
+}
+
+/** 下载完成或命中已有文件后，独立补齐歌词、侧车封面与内嵌标签。 */
+async function finalizeFile(dest, detail, vars, ops) {
+  let lrc = '';
+  await bestEffort(dest, '歌词写入', async () => {
+    const lyrics = await ops.getLyrics(detail.mid);
+    lrc = [lyrics.lyric, lyrics.trans].filter(Boolean).join('\n\n');
+    await ops.writeSidecarLrc(dest, lrc);
+  });
+
+  let cover = { buffer: null, mime: 'image/jpeg' };
+  await bestEffort(dest, '封面下载', async () => {
+    cover = await ops.fetchCover(detail.cover);
+  });
+
+  await bestEffort(dest, '侧车封面写入', async () => {
+    if (cover.buffer) await ops.saveSidecarCover(dest, cover.buffer, cover.mime);
+  });
+
+  await bestEffort(dest, '元数据写入', () =>
+    ops.writeMetadata(
+      dest,
+      {
+        title: vars.title,
+        artist: vars.artist,
+        album: vars.album,
+        year: vars.year,
+        lyrics: lrc,
+      },
+      cover.buffer,
+      cover.mime,
+    ),
+  );
+}
 
 /** 流式下载到 dest（先写 .part 再原子改名），进度回调 received/total */
 async function streamDownload(url, dest, { onProgress, signal, fetchImpl }) {
@@ -128,6 +171,7 @@ export async function runTask(task, { db, onProgress, signal, operations = {} })
 
   // 幂等：目标文件已存在
   if (await fileExists(dest)) {
+    await finalizeFile(dest, detail, vars, ops);
     return { filePath: dest, quality: resolved.quality, received: 0, total: 0, dedupedFile: true };
   }
 
@@ -138,27 +182,8 @@ export async function runTask(task, { db, onProgress, signal, operations = {} })
     fetchImpl: ops.fetch,
   });
 
-  // 5. 元数据（尽力而为，失败不影响下载结果）
-  try {
-    const { lyric, trans } = await ops.getLyrics(task.mid);
-    const lrc = [lyric, trans].filter(Boolean).join('\n\n');
-    const { buffer, mime } = await ops.fetchCover(detail.cover);
-    await ops.writeMetadata(
-      dest,
-      {
-        title: vars.title,
-        artist: vars.artist,
-        album: vars.album,
-        year: vars.year,
-        lyrics: lrc,
-      },
-      buffer,
-      mime,
-    );
-    await ops.writeSidecarLrc(dest, lrc);
-  } catch (e) {
-    console.warn(`[task] 元数据写入失败(${path.basename(dest)}): ${e.message}`);
-  }
+  // 5. 元数据（各项尽力而为，失败不影响下载结果）
+  await finalizeFile(dest, detail, vars, ops);
 
   return { filePath: dest, quality: resolved.quality, received, total, dedupedFile: false };
 }

@@ -238,13 +238,18 @@ Base URL：`http://127.0.0.1:7800`（可用 `QQDL_HOST`/`QQDL_PORT` 修改）
 流式播放本地音频文件（内置播放器用）。支持 `Range` 请求（206 Partial Content + `Content-Range`），越界返回 416，文件丢失返回 404。
 
 ### GET /api/library/:id/cover
-提取文件内嵌封面（MP3 走 ID3、FLAC 走 PICTURE 块），返回图片二进制；无内嵌封面返回 404。
+返回歌曲封面图片二进制。优先读取与音频同名的 `.cover.jpg`、`.cover.png` 或 `.cover.webp` 侧车封面；没有侧车封面时，再提取 MP3 ID3 / FLAC PICTURE 内嵌封面。均未找到时返回 404 `NO_COVER`。
 
 ### GET /api/library/:id/lrc
 返回歌曲歌词（`text/plain; charset=utf-8`）：优先读音频同目录的侧车 `.lrc`，其次提取文件内嵌歌词（MP3 ID3 / FLAC VORBIS_COMMENT 的 LYRICS 字段）；都没有返回 404 `NO_LYRICS`。
 
 ### POST /api/library/cleanup
 清理所有“文件已丢失”的媒体库记录（仅删 DB 记录，不动磁盘）。返回 `{ "removed": 3 }`。
+
+### POST /api/library/covers/refresh
+为旧媒体库中缺少封面的歌曲按需补齐侧车封面。已有封面或文件缺失的歌曲会跳过，单曲失败不会中断整批任务。
+
+返回 `{ "total": 37, "repaired": 0, "skipped": 37, "failed": 0 }`。
 
 > 注：音频/封面端点不受 API Token 保护（`<audio>`/`<img>` 无法携带 Authorization 头；服务默认仅监听 127.0.0.1）。
 >
@@ -256,6 +261,7 @@ Base URL：`http://127.0.0.1:7800`（可用 `QQDL_HOST`/`QQDL_PORT` 修改）
 ### POST /api/library/:id/delete
 删除媒体库记录。请求体 `{ "removeFile": true }`（缺省 true）：
 - `true`：同时删除磁盘文件、侧车 `.lrc` 及空的歌曲文件夹，再删记录
+- `true` 也会清理 `.cover.jpg/.cover.png/.cover.webp` 侧车封面
 - `false`：仅删除媒体库记录，磁盘文件保留
 
 返回 `{ "ok": true, "fileRemoved": true, "title": "..." }`。路径穿越防护：只允许操作下载目录内的文件。

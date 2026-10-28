@@ -99,6 +99,7 @@
               <h2 class="card-title">媒体库 <span class="lib-count" id="library-count"></span></h2>
               <div class="library-head-actions">
                 <button class="btn btn-ghost btn-sm" id="library-cleanup-btn" type="button" hidden>清理失效记录</button>
+                <button class="btn btn-ghost btn-sm" id="library-cover-refresh-btn" type="button" title="为缺少封面的歌曲补齐封面">修复封面</button>
                 <input class="filter-input" id="library-filter" type="search" placeholder="按歌曲 / 歌手 / 专辑过滤…" aria-label="媒体库过滤">
               </div>
             </div>
@@ -274,7 +275,7 @@
         <p class="guide-message" id="delete-message"></p>
         <label class="checkbox-field" for="delete-remove-file">
           <input type="checkbox" id="delete-remove-file" checked>
-          <span class="field-label">同时删除磁盘文件（含 .lrc 与空歌曲文件夹）</span>
+          <span class="field-label">同时删除磁盘文件（含 .lrc、封面与空歌曲文件夹）</span>
         </label>
         <div class="modal-actions">
           <button class="btn btn-ghost" id="delete-cancel" type="button">取消</button>

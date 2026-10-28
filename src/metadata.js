@@ -2,13 +2,13 @@
  * 元数据写入：
  *  - FLAC: 自实现 VORBIS_COMMENT + PICTURE 块重写
  *  - MP3 : node-id3（ID3v2）
- *  - OGG : 跳过容器内嵌标签（写侧车 LRC）
- *  - M4A/MP4: 跳过容器内嵌标签（写侧车 LRC）
- *  - 所有格式: 侧车 .lrc
+ *  - OGG : 跳过容器内嵌标签
+ *  - M4A/MP4: 跳过容器内嵌标签
+ *  - 所有格式: 侧车 .cover.jpg/.cover.png/.cover.webp + 侧车 .lrc
  */
 
 import path from 'node:path';
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import NodeID3 from 'node-id3';
 
 // ---------------- FLAC ----------------
@@ -16,6 +16,12 @@ import NodeID3 from 'node-id3';
 const FLAC_MAGIC = Buffer.from('fLaC');
 const BLOCK_VORBIS_COMMENT = 4;
 const BLOCK_PICTURE = 6;
+const MAX_SIDECAR_COVER_BYTES = 10 * 1024 * 1024;
+const SIDECAR_COVER_TYPES = [
+  { ext: '.cover.jpg', mime: 'image/jpeg' },
+  { ext: '.cover.png', mime: 'image/png' },
+  { ext: '.cover.webp', mime: 'image/webp' },
+];
 
 /** 读取 FLAC 元数据块序列，返回 { blocks: [{type, data}], audioStart } */
 function parseFlacBlocks(buf) {
@@ -158,6 +164,91 @@ export async function writeSidecarLrc(file, lrcText) {
   await writeFile(lrcPath, lrcText.replace(/\r\n/g, '\n'), 'utf8');
 }
 
+function sidecarBase(file) {
+  return file.slice(0, file.length - path.extname(file).length);
+}
+
+/** 返回音频可能对应的全部侧车封面路径 */
+export function sidecarCoverPaths(file) {
+  const base = sidecarBase(file);
+  return SIDECAR_COVER_TYPES.map(({ ext }) => base + ext);
+}
+
+function sniffCoverMime(buffer) {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  return null;
+}
+
+function normalizeCoverMime(buffer, mime = '') {
+  const sniffed = sniffCoverMime(buffer);
+  if (!sniffed) return null;
+  const declared = String(mime).split(';')[0].trim().toLowerCase().replace('image/jpg', 'image/jpeg');
+  return declared === sniffed ? declared : sniffed;
+}
+
+/**
+ * 保存独立侧车封面。侧车不依赖容器格式，供 OGG/M4A/MP4 等无法安全写内嵌封面的音频使用。
+ * @returns {Promise<{path: string, mime: string}|null>}
+ */
+export async function saveSidecarCover(file, buffer, mime = 'image/jpeg') {
+  if (!buffer?.length) return null;
+  const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  if (data.length > MAX_SIDECAR_COVER_BYTES) throw new Error('封面文件超过 10MB 限制');
+  const normalizedMime = normalizeCoverMime(data, mime);
+  if (!normalizedMime) throw new Error('不支持的封面格式（仅支持 JPEG/PNG/WebP）');
+
+  const type = SIDECAR_COVER_TYPES.find((item) => item.mime === normalizedMime);
+  const target = sidecarBase(file) + type.ext;
+  const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tmp, data);
+  await rename(tmp, target);
+
+  const stale = sidecarCoverPaths(file).filter((coverPath) => coverPath !== target);
+  await Promise.all(stale.map((coverPath) => rm(coverPath, { force: true })));
+  return { path: target, mime: normalizedMime };
+}
+
+/** 读取侧车封面；没有时返回空封面 */
+export async function readSidecarCover(file) {
+  const base = sidecarBase(file);
+  for (const type of SIDECAR_COVER_TYPES) {
+    try {
+      const buffer = await readFile(base + type.ext);
+      if (buffer.length > 0) return { buffer, mime: type.mime };
+    } catch {
+      /* 尝试下一种格式 */
+    }
+  }
+  return { buffer: null, mime: 'image/jpeg' };
+}
+
+/** 删除所有格式的侧车封面 */
+export async function removeSidecarCovers(file) {
+  await Promise.all(sidecarCoverPaths(file).map((coverPath) => rm(coverPath, { force: true })));
+}
+
 /** 下载封面（失败返回 null） */
 export async function fetchCover(url) {
   if (!url) return { buffer: null, mime: 'image/jpeg' };
@@ -167,7 +258,9 @@ export async function fetchCover(url) {
     const ct = res.headers.get('content-type') || 'image/jpeg';
     const buffer = Buffer.from(await res.arrayBuffer());
     if (buffer.length < 100) return { buffer: null, mime: ct };
-    return { buffer, mime: ct.split(';')[0] };
+    const normalizedMime = normalizeCoverMime(buffer, ct);
+    if (!normalizedMime) return { buffer: null, mime: 'image/jpeg' };
+    return { buffer, mime: normalizedMime };
   } catch {
     return { buffer: null, mime: 'image/jpeg' };
   }
@@ -251,4 +344,11 @@ export async function extractCover(file) {
     /* 读取失败按无封面处理 */
   }
   return { buffer: null, mime: 'image/jpeg' };
+}
+
+/** 读取封面：独立侧车优先，其次读取 MP3/FLAC 内嵌封面 */
+export async function readCover(file) {
+  const sidecar = await readSidecarCover(file);
+  if (sidecar.buffer) return sidecar;
+  return extractCover(file);
 }

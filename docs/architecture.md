@@ -6,15 +6,15 @@
 
 ### 功能性需求
 
-| #   | 需求           | 说明                                                                                      |
-| --- | -------------- | ----------------------------------------------------------------------------------------- |
-| F1  | 歌曲搜索       | 输入歌名/歌手/关键词，返回歌曲列表（mid、标题、歌手、专辑、时长、封面）                   |
-| F2  | 音质选择与下载 | 17 档音质中选择；VIP 音质依赖登录凭证；无权限时按梯度自动降级（可关闭）                   |
-| F3  | 下载队列       | 并发控制（默认 2）、失败重试（指数退避）、进度上报、取消、断点去重                        |
-| F4  | 元数据整理     | 嵌入封面、歌词（QRC 解密为 LRC）、ID3/Vorbis 标签；命名模板；按歌手/专辑分目录；侧车 .lrc |
-| F5  | 登录管理       | QQ 扫码登录；凭证 AES-256-GCM 加密持久化；过期检测与重新扫码                              |
-| F6  | Web UI         | 单页应用：搜索页 / 任务页 / 媒体库 / 设置                                                 |
-| F7  | Agent API      | 完整 REST 接口，供 AI Agent 编程化调度下载（搜索→建任务→查进度）                          |
+| #   | 需求           | 说明                                                                                              |
+| --- | -------------- | ------------------------------------------------------------------------------------------------- |
+| F1  | 歌曲搜索       | 输入歌名/歌手/关键词，返回歌曲列表（mid、标题、歌手、专辑、时长、封面）                           |
+| F2  | 音质选择与下载 | 17 档音质中选择；VIP 音质依赖登录凭证；无权限时按梯度自动降级（可关闭）                           |
+| F3  | 下载队列       | 并发控制（默认 2）、失败重试（指数退避）、进度上报、取消、断点去重                                |
+| F4  | 元数据整理     | 所有格式写侧车封面与歌词；MP3/FLAC 额外支持内嵌封面、ID3/Vorbis 标签；命名模板；按歌手/专辑分目录 |
+| F5  | 登录管理       | QQ 扫码登录；凭证 AES-256-GCM 加密持久化；过期检测与重新扫码                                      |
+| F6  | Web UI         | 单页应用：搜索页 / 任务页 / 媒体库 / 设置                                                         |
+| F7  | Agent API      | 完整 REST 接口，供 AI Agent 编程化调度下载（搜索→建任务→查进度）                                  |
 
 ### 非功能性需求
 
@@ -43,7 +43,7 @@ flowchart TD
     subgraph Server["qqmusic-dl 服务（Fastify 单进程，可独立运行或在 Electron 主进程内启动）"]
         API["REST 路由层<br/>/api/auth /api/search /api/downloads /api/tasks /api/library /api/config"]
         Q["下载队列 DownloadQueue<br/>并发2 · 重试 · 取消 · 进度"]
-        M["元数据 MetadataWriter<br/>FLAC/OGG Vorbis · MP3 ID3 · 侧车 LRC"]
+        M["元数据 MetadataWriter<br/>侧车封面/LRC · FLAC/MP3 内嵌标签"]
         A["认证 Auth<br/>扫码流程 · 凭证加密存储"]
         QQ["QQ 适配层 qq.js<br/>搜索/取链/歌词/详情"]
         DB[("SQLite<br/>node:sqlite<br/>tasks/settings/files")]
@@ -73,20 +73,21 @@ flowchart TD
 
 ### 模块职责
 
-| 模块       | 文件                                                 | 职责                                                                       |
-| ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
-| 入口       | `src/server.js`                                      | 目录初始化、DB 初始化、队列启动、路由挂载、优雅退出                        |
-| 配置       | `src/config.js`                                      | 环境变量与默认值，路径解析                                                 |
-| 数据库     | `src/db.js`                                          | node:sqlite 封装，tasks/settings/files 三表                                |
-| QQ 适配    | `src/qq.js`                                          | Client 单例、音质阶梯、搜索解析、取链（含降级）、歌词解密                  |
-| 认证       | `src/auth.js`                                        | 扫码登录状态机、凭证加解密、注入 Client                                    |
-| 队列       | `src/queue.js`                                       | 并发worker、重试、取消、进度                                               |
-| 任务       | `src/task.js`                                        | 单任务编排：详情→取链→下载→元数据→落库                                     |
-| 元数据     | `src/metadata.js`                                    | FLAC/OGG Vorbis+封面写入、MP3 ID3（node-id3）、LRC 侧车                    |
-| 路由       | `src/routes/api.js` `src/routes/ui.js`               | REST API 与静态 UI                                                         |
-| 工具       | `src/util/crypto.js` `src/util/naming.js`            | AES-GCM 加解密；命名模板与文件名清洗                                       |
-| 桌面壳     | `electron/main.js`                                   | Electron 生命周期、后端启动、主窗口、歌词窗口、托盘、IPC、日志和旧数据迁移 |
-| 桌面预加载 | `electron/preload.cjs` `electron/lyrics-preload.cjs` | 经 `contextBridge` 暴露最小 IPC API                                        |
+| 模块       | 文件                                                 | 职责                                                                         |
+| ---------- | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 入口       | `src/server.js`                                      | 目录初始化、DB 初始化、队列启动、路由挂载、优雅退出                          |
+| 配置       | `src/config.js`                                      | 环境变量与默认值，路径解析                                                   |
+| 数据库     | `src/db.js`                                          | node:sqlite 封装，tasks/settings/files 三表                                  |
+| QQ 适配    | `src/qq.js`                                          | Client 单例、音质阶梯、搜索解析、取链（含降级）、歌词解密                    |
+| 认证       | `src/auth.js`                                        | 扫码登录状态机、凭证加解密、注入 Client                                      |
+| 队列       | `src/queue.js`                                       | 并发worker、重试、取消、进度                                                 |
+| 任务       | `src/task.js`                                        | 单任务编排：详情→取链→下载→元数据→落库                                       |
+| 元数据     | `src/metadata.js`                                    | 全格式侧车封面/LRC、FLAC Vorbis+PICTURE、MP3 ID3（node-id3）、封面读取与清理 |
+| 封面回填   | `src/cover-repair.js`                                | 用户手动触发，为旧媒体库中缺少封面的歌曲补齐侧车封面                         |
+| 路由       | `src/routes/api.js` `src/routes/ui.js`               | REST API 与静态 UI                                                           |
+| 工具       | `src/util/crypto.js` `src/util/naming.js`            | AES-GCM 加解密；命名模板与文件名清洗                                         |
+| 桌面壳     | `electron/main.js`                                   | Electron 生命周期、后端启动、主窗口、歌词窗口、托盘、IPC、日志和旧数据迁移   |
+| 桌面预加载 | `electron/preload.cjs` `electron/lyrics-preload.cjs` | 经 `contextBridge` 暴露最小 IPC API                                          |
 
 ### 2.1 运行形态
 
@@ -146,11 +147,11 @@ flowchart TD
 - **决策**：`/api/*` 全部 JSON；创建任务接口幂等（同 mid+quality 已成功则直接返回已有文件）；默认仅监听 `127.0.0.1`，设置 `QQDL_API_TOKEN` 后要求 `Authorization: Bearer`。
 - **后果**：Agent 侧无需 SDK，curl 即可调度；进度用轮询（`GET /api/tasks`）不引入 SSE，Agent 兼容性最好。
 
-### ADR-007：元数据写入策略——MP3 用 node-id3，FLAC/OGG 自写 Vorbis 块
+### ADR-007：元数据写入策略——侧车优先，MP3/FLAC 内嵌兜底
 
-- **决策**：FLAC/OGG 自行实现 VORBIS_COMMENT + PICTURE 块重写（纯二进制操作，约 150 行）；MP3 用维护活跃的 `node-id3`；M4A/MP4 不嵌标签但写侧车 `.lrc`。
+- **决策**：所有音频格式都写独立侧车封面（JPEG/PNG/WebP）和 `.lrc`；MP3 使用 `node-id3` 写内嵌标签与封面，FLAC 自实现 VORBIS_COMMENT + PICTURE 块重写；OGG/M4A/MP4 不写容器内嵌标签。
 - **备选**：music-metadata（读强写弱，无公开写 API）、ffmpeg CLI（用户机器不一定有）。
-- **后果**：依赖最少；VIP 主流的 FLAC/MP3 全覆盖，M4A 属可接受降级。
+- **后果**：封面展示不再依赖容器格式；MP3/FLAC 内嵌封面作为兼容兜底。旧媒体库通过媒体库中的“修复封面”按需回填，不在启动或下载主流程外自动扫描。
 
 ### ADR-008：歌单详情用公开接口 `fcg_ucc_getcdinfo_byids_cp.fcg`，在适配层自实现
 
