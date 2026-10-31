@@ -85,6 +85,35 @@ The generated installer is not code-signed. Windows SmartScreen may show an "Unk
 
 Prebuilt Windows and macOS assets are available on the [latest release page](https://github.com/2921323707/qqmusic-dl/releases/latest) when published.
 
+## Android App
+
+The `android/` project is a standalone Kotlin and Jetpack Compose app. It talks
+directly to the public QQ Music endpoints and does not start the local service
+or depend on port `7800`.
+
+The initial mobile release supports song search, public-quality downloads with
+fallback, progress and cancellation, a persistent local library, local
+playback, and optional export to `Music/qqmusic-dl`. MP3 and M4A exports include
+title, artist, album, and embedded cover metadata.
+
+Requirements:
+
+- JDK 17
+- Android SDK Platform 35 and Build-Tools 35.0.0
+- Android 8.0 (API 26) or newer
+
+```powershell
+Set-Location android
+.\gradlew.bat testDebugUnitTest lintDebug assembleRelease --console=plain
+```
+
+Release signing is read from the ignored `android/keystore.properties` file.
+See [docs/android.md](docs/android.md) for signing, storage behavior, build
+output, and manual acceptance steps.
+
+Android MVP limitations: QQ account login, VIP-only qualities, background
+playback, and floating lyrics are not implemented yet.
+
 ## Sign In
 
 Search and standard-quality downloads can work without an account. VIP-only qualities require a QQ Music login.
@@ -293,6 +322,7 @@ qqmusic-dl/
 |   `-- util/            # Naming, lyrics, and crypto helpers
 |-- public/              # Zero-build web UI
 |-- electron/            # Desktop shell, preloads, tray, and lyrics window
+|-- android/             # Standalone Kotlin and Jetpack Compose Android app
 |-- vendor/QQMusicapi    # Upstream QQ Music API implementation
 |-- docs/                # API contract and architecture decisions
 |-- test/                # Node test suite

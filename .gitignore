@@ -2,16 +2,32 @@
 node_modules/
 
 # 运行时数据：登录凭证、SQLite 库、密钥 —— 绝不入库
-data/
+/data/
 # 下载的音乐文件（体积大且属个人资产）
-downloads/
+/downloads/
 
 # 日志与下载残片
 *.log
 *.part
 
 # Windows 桌面安装包与打包中间产物
-dist/
+/dist/
+
+# Android build output, machine-specific SDK paths, and local signing material
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/build/
+android/.idea/
+android/*.iml
+android/keystore.properties
+android/*.jks
+android/*.keystore
+
+# Android acceptance artifacts generated on the local emulator
+android/screen*.png
+android/window*.xml
+android/acceptance-export-*/
 
 # 编辑器/系统噪音
 .DS_Store
